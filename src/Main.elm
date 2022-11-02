@@ -2,12 +2,14 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom
-import Element exposing (centerX, el, fill, layout, width)
+import Browser.Events
+import Element exposing (centerX, centerY, el, fill, layout, width)
 import GeoJson exposing (GeoJson)
 import Html exposing (Html)
 import Json.Decode as Json
 import Projection exposing (Polygon, Projection)
 import Task
+import Time
 
 
 main =
@@ -23,11 +25,15 @@ type alias Model =
   { projection : Projection
   , size : Maybe Projection.Size
   , data : Maybe Projection.Data
+  , anglePerSecond : Float
+  , angle : Float
   }
 
 
 type Msg
-  = Size { width : Float, height : Float }
+  = Scene { width : Float, height : Float }
+  | Resize Int Int
+  | Frame Float
   | ProjectionMsg Projection.Msg
 
 
@@ -38,24 +44,37 @@ init data =
     , data = Maybe.andThen GeoJson.toPolygons
       <| Result.toMaybe
       <| Json.decodeString GeoJson.decoder data
+    , anglePerSecond = 1
+    , angle = 0
     }
-  , Task.perform (.scene >> Size) Browser.Dom.getViewport
+  , Task.perform (.scene >> Scene) Browser.Dom.getViewport
   )
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  Sub.none
+subscriptions _ =
+  Sub.batch
+    [ Browser.Events.onAnimationFrameDelta Frame
+    , Browser.Events.onResize Resize
+    ]
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  case msg of
-    Size size ->
-      ({ model | size = Just (size.width, size.height) }, Cmd.none)
+  ( case msg of
+    Scene scene ->
+      { model | size = Just (scene.width, scene.height) }
+
+    Resize width height ->
+      { model | size = Just (toFloat width, toFloat height) }
+
+    Frame ms ->
+      { model | angle = model.angle + model.anglePerSecond * ms / 1000 }
 
     _ ->
-      (model, Cmd.none)
+      model
+  , Cmd.none
+  )
 
 
 view : Model -> Html Msg
@@ -65,8 +84,11 @@ view model =
       Just (size, data) ->
         el
           [ centerX
+          , centerY
           ]
-          <| Element.html <| Html.map ProjectionMsg <| Projection.view model.projection size data
+          <| Element.html
+          <| Html.map ProjectionMsg
+          <| Projection.view model.projection size data model.angle
 
       Nothing ->
         Element.none

@@ -69,10 +69,13 @@ view projection =
       (lng + projection.angle, lat)
 
     fromDegrees (lng, lat) =
-      (lng, lat)
+      (degrees lng, degrees lat)
 
     project =
-      rotate >> projection.algorithm.transform >> scale
+      fromDegrees
+        >> rotate
+        >> projection.algorithm.transform
+        >> scale
 
     inPol pol =
       polygon
@@ -111,7 +114,7 @@ mecrator =
         else (w, w / 2)
   , transform =
     \(lng, lat) ->
-      (lng / 180, lat / 90)
+      (lng / pi, lat / (pi / 2))
   }
 
 
@@ -124,8 +127,8 @@ disc =
   , transform =
     \(lng, lat) ->
       polar
-        (cos <| degrees <| (90 + lat) / 2)
-        (degrees <| lng + 180)
+        (cos <| (pi / 2 + lat) / 2)
+        (lng + pi)
   }
 
 

@@ -2,8 +2,8 @@ module GeoJson exposing (..)
 
 
 import Json.Decode as Json
+import Math exposing (Point, Polygon)
 import Maybe.Extra
-import Projection exposing (Point, Polygon)
 
 
 type alias GeoJson =
@@ -43,16 +43,26 @@ toPolygons data =
 
 toPolygon : Feature -> Maybe Polygon
 toPolygon feature =
-  let
-    coords = feature.geometry.coordinates
-  in
-  Maybe.map2 Polygon
-    (Maybe.andThen (Maybe.Extra.combine << List.map toPoint) <| List.head coords)
-    (Maybe.Extra.combine <| List.map toPoint <| Maybe.withDefault [] <| Maybe.andThen List.head <| List.tail coords)
+  case feature.geometry.coordinates of
+    [inclusion] ->
+      Maybe.map2 Polygon
+        (Maybe.Extra.combine <| List.map toPoint inclusion)
+        (Just [])
+
+    [inclusion, exclusion] ->
+      Maybe.map2 Polygon
+        (Maybe.Extra.combine <| List.map toPoint inclusion)
+        (Maybe.Extra.combine <| List.map toPoint exclusion)
+
+    _ ->
+      Nothing
 
 
 toPoint : List Float -> Maybe Point
 toPoint floats =
-  Maybe.map2 Tuple.pair
-    (List.head floats)
-    (Maybe.andThen List.head <| List.tail floats)
+  case floats of
+    [x, y] ->
+      Just (x, y)
+
+    _ ->
+      Nothing

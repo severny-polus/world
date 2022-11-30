@@ -3,13 +3,12 @@ module Main exposing (main)
 import Browser
 import Browser.Dom
 import Browser.Events
-import Element exposing (centerX, centerY, el, fill, layout, width)
+import Element exposing (centerX, centerY, el, layout, width)
 import GeoJson exposing (GeoJson)
 import Html exposing (Html)
 import Json.Decode as Json
-import Projection exposing (Polygon, Projection)
+import Projection exposing (Projection)
 import Task
-import Time
 
 
 main =
@@ -22,11 +21,9 @@ main =
 
 
 type alias Model =
-  { projection : Projection
-  , size : Maybe Projection.Size
-  , data : Maybe Projection.Data
+  { projection : Maybe Projection
+  , geojson : String
   , anglePerSecond : Float
-  , angle : Float
   }
 
 
@@ -38,17 +35,20 @@ type Msg
 
 
 init : String -> (Model, Cmd Msg)
-init data =
-  ( { projection = Projection.disc
-    , size = Nothing
-    , data = Maybe.andThen GeoJson.toPolygons
-      <| Result.toMaybe
-      <| Json.decodeString GeoJson.decoder data
-    , anglePerSecond = 1
-    , angle = 0
+init geojson =
+  ( { projection = Nothing
+    , geojson = geojson
+    , anglePerSecond = 2 * pi / 360
     }
   , Task.perform (.scene >> Scene) Browser.Dom.getViewport
   )
+
+
+getGeodata : String -> Maybe Projection.Data
+getGeodata string =
+  Json.decodeString GeoJson.decoder string
+    |> Result.toMaybe
+    |> Maybe.andThen GeoJson.toPolygons
 
 
 subscriptions : Model -> Sub Msg
@@ -63,13 +63,27 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   ( case msg of
     Scene scene ->
-      { model | size = Just (scene.width, scene.height) }
+      { model
+      | projection =
+        Maybe.map (Projection.init Projection.disc (scene.width, scene.height))
+          <| getGeodata model.geojson
+      }
 
     Resize width height ->
-      { model | size = Just (toFloat width, toFloat height) }
+      { model
+      | projection =
+        Maybe.map
+          (Projection.update <| Projection.Size (toFloat width, toFloat height))
+          model.projection
+      }
 
     Frame ms ->
-      { model | angle = model.angle + model.anglePerSecond * ms / 1000 }
+      { model
+      | projection =
+        Maybe.map
+          (Projection.update <| Projection.AngleChange <| model.anglePerSecond * ms / 1000)
+          model.projection
+      }
 
     _ ->
       model
@@ -80,15 +94,15 @@ update msg model =
 view : Model -> Html Msg
 view model =
   layout []
-    <| case Maybe.map2 Tuple.pair model.size model.data of
-      Just (size, data) ->
+    <| case model.projection of
+      Just projection ->
         el
           [ centerX
           , centerY
           ]
           <| Element.html
           <| Html.map ProjectionMsg
-          <| Projection.view model.projection size data model.angle
+          <| Projection.view projection
 
       Nothing ->
         Element.none

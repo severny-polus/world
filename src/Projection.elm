@@ -3,39 +3,89 @@ module Projection exposing (..)
 
 import Color
 import Html exposing (Html)
+import Math exposing (Point, Polygon)
 import TypedSvg exposing (polygon, svg)
-import TypedSvg.Attributes exposing (fill, points, stroke, viewBox, width)
+import TypedSvg.Attributes exposing (fill, points, stroke)
 import TypedSvg.Attributes.InPx as InPx
-import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Paint(..), percent)
+import TypedSvg.Types exposing (Paint(..))
 
 
 type alias Projection =
+  { algorithm : Algorithm
+  , size : Size
+  , data : Data
+  , angle : Float
+  }
+
+
+type alias Algorithm =
   { inscribe : Size -> Size
   , transform : Point -> Point
   }
 
 
+type alias Size =
+  (Float, Float)
+
+
+type alias Data =
+  List Polygon
+
+
 type Msg
-  = Nothing
+  = Size Size
+  | AngleChange Float
 
 
-type alias Size = (Float, Float)
+init : Algorithm -> Size -> Data -> Projection
+init algorithm size data =
+  { algorithm = algorithm
+  , angle = 0
+  , size = size
+  , data = data
+  }
 
 
-view : Projection -> Size -> Data -> Float -> Html Msg
-view projection size data angle =
+update : Msg -> Projection -> Projection
+update msg projection =
+  case msg of
+    Size size ->
+      { projection | size = size }
+
+    AngleChange da ->
+      { projection | angle = projection.angle + da }
+
+
+view : Projection -> Html Msg
+view projection =
   let
-    (w, h) = projection.inscribe size
+    (w, h) =
+      projection.algorithm.inscribe projection.size
 
-    scale (x, y) = ((1 + x) * w / 2, (1 - y) * h / 2)
+    scale (x, y) =
+      ((1 + x) * w / 2, (1 - y) * h / 2)
 
-    rotate (lng, lat) = (lng + angle, lat)
+    rotate (lng, lat) =
+      (lng + projection.angle, lat)
 
-    inPol : Polygon -> Svg Msg
+    fromDegrees (lng, lat) =
+      (lng, lat)
+
+    project =
+      rotate >> projection.algorithm.transform >> scale
+
     inPol pol =
       polygon
-        [ points <| List.map (scale << projection.transform << rotate) pol.inclusion
+        [ points <| List.map project pol.inclusion
+        , stroke <| Paint Color.black
+        , fill <| Paint Color.white
+        , InPx.strokeWidth 1
+        ]
+        []
+
+    exPol pol =
+      polygon
+        [ points <| List.map project pol.exclusion
         , stroke <| Paint Color.black
         , fill <| Paint Color.white
         , InPx.strokeWidth 1
@@ -46,37 +96,40 @@ view projection size data angle =
     [ InPx.width w
     , InPx.height h
     ]
-    <| List.map inPol data
-
-
-type alias Data = List Polygon
-
-
-type alias Polygon =
-  { inclusion : List Point
-  , exclusion : List Point
-  }
-
-
-type alias Point = (Float, Float)
-
+    <| List.append
+      (List.map inPol projection.data)
+      (List.map exPol projection.data)
+      
 
 -- TODO: fix
-default : Projection
-default =
-  { inscribe = \(w, h) -> if w > 2 * h then (2 * h, h) else (w, w / 2)
-  , transform = \(lng, lat) -> (lng / 180, lat / 90)
+mecrator : Algorithm
+mecrator =
+  { inscribe =
+    \(w, h) ->
+      if w > 2 * h
+        then (2 * h, h)
+        else (w, w / 2)
+  , transform =
+    \(lng, lat) ->
+      (lng / 180, lat / 90)
   }
 
 
-disc : Projection
+disc : Algorithm
 disc =
-  { inscribe = \(w, h) -> (min w h, min w h)
-  , transform = \(lng, lat) -> polar (cos <| degrees <| (90 + lat) / 2) (degrees <| lng + 180)
+  { inscribe =
+    \(w, h) ->
+      let a = min w h
+      in (a, a)
+  , transform =
+    \(lng, lat) ->
+      polar
+        (cos <| degrees <| (90 + lat) / 2)
+        (degrees <| lng + 180)
   }
 
 
-polar : Float -> Float -> (Float, Float)
+polar : Float -> Float -> Point
 polar r phi =
   (r * cos phi, r * sin phi)
 

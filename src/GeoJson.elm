@@ -43,19 +43,20 @@ toPolygons data =
 
 toPolygon : Feature -> Maybe Polygon
 toPolygon feature =
-  case feature.geometry.coordinates of
-    [inclusion] ->
-      Maybe.map2 Polygon
-        (Maybe.Extra.combine <| List.map toPoint inclusion)
-        (Just [])
+  let
+    exterior =
+      List.head feature.geometry.coordinates
 
-    [inclusion, exclusion] ->
-      Maybe.map2 Polygon
-        (Maybe.Extra.combine <| List.map toPoint inclusion)
-        (Maybe.Extra.combine <| List.map toPoint exclusion)
+    interiors =
+      List.tail feature.geometry.coordinates
 
-    _ ->
-      Nothing
+    toRing =
+      List.map toPoint
+        >> Maybe.Extra.combine
+  in
+  Maybe.map2 Polygon
+    (Maybe.andThen toRing exterior)
+    (Maybe.andThen (List.map toRing >> Maybe.Extra.combine) interiors)
 
 
 toPoint : List Float -> Maybe Point

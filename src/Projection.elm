@@ -13,7 +13,7 @@ import TypedSvg.Types exposing (Paint(..))
 type alias Projection =
   { algorithm : Algorithm
   , size : Size
-  , data : Data
+  , geodata : Geodata
   , angle : Float
   }
 
@@ -28,7 +28,7 @@ type alias Size =
   (Float, Float)
 
 
-type alias Data =
+type alias Geodata =
   List Polygon
 
 
@@ -37,12 +37,12 @@ type Msg
   | AngleChange Float
 
 
-init : Algorithm -> Size -> Data -> Projection
-init algorithm size data =
+init : Algorithm -> Size -> Geodata -> Projection
+init algorithm size geodata =
   { algorithm = algorithm
   , angle = 0
   , size = size
-  , data = data
+  , geodata = geodata
   }
 
 
@@ -68,40 +68,44 @@ view projection =
     rotate (lng, lat) =
       (lng + projection.angle, lat)
 
-    fromDegrees (lng, lat) =
-      (degrees lng, degrees lat)
+    spherical (lng, lat) =
+      (degrees lng, pi / 2 - degrees lat)
 
     project =
-      fromDegrees
+      spherical
         >> rotate
         >> projection.algorithm.transform
         >> scale
 
-    inPol pol =
+    exterior ring =
       polygon
-        [ points <| List.map project pol.inclusion
+        [ points <| List.map project ring
         , stroke <| Paint Color.black
         , fill <| Paint Color.white
         , InPx.strokeWidth 1
         ]
         []
 
-    exPol pol =
+    interior ring =
       polygon
-        [ points <| List.map project pol.exclusion
+        [ points <| List.map project ring
         , stroke <| Paint Color.black
         , fill <| Paint Color.white
         , InPx.strokeWidth 1
         ]
         []
+
+    svgPolygons pol =
+
+      List.append
+        [ exterior pol.exterior ]
+          <| List.map interior pol.interiors
   in
   svg
     [ InPx.width w
     , InPx.height h
     ]
-    <| List.append
-      (List.map inPol projection.data)
-      (List.map exPol projection.data)
+      <| List.concatMap svgPolygons projection.geodata
       
 
 -- TODO: fix
@@ -113,8 +117,8 @@ mecrator =
         then (2 * h, h)
         else (w, w / 2)
   , transform =
-    \(lng, lat) ->
-      (lng / pi, lat / (pi / 2))
+    \(phi, theta) ->
+      (phi / pi, theta / (pi / 2))
   }
 
 
@@ -125,10 +129,10 @@ disc =
       let a = min w h
       in (a, a)
   , transform =
-    \(lng, lat) ->
+    \(phi, theta) ->
       polar
-        (cos <| (pi / 2 + lat) / 2)
-        (lng + pi)
+        (cos <| pi / 2 - theta / 2)
+        (pi + phi)
   }
 
 

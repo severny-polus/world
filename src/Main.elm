@@ -44,7 +44,7 @@ init geojson =
   )
 
 
-getGeodata : String -> Maybe Projection.Data
+getGeodata : String -> Maybe Projection.Geodata
 getGeodata string =
   Json.decodeString GeoJson.decoder string
     |> Result.toMaybe

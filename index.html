@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <title>world</title>
     <script src="main.js"></script>
-    <script src="geodata/geodata.js"></script>
+    <script src="geodata.js"></script>
 </head>
 
 <body>
 <div id="myapp"></div>
-<script>
+<script type="module">
     const app = Elm.Main.init({
         node: document.getElementById('myapp'),
         flags: land,

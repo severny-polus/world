@@ -7,6 +7,7 @@ import Math exposing (Point, Polygon)
 import TypedSvg exposing (polygon, svg)
 import TypedSvg.Attributes exposing (fill, points, stroke)
 import TypedSvg.Attributes.InPx as InPx
+import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..))
 
 
@@ -95,17 +96,17 @@ view projection =
         ]
         []
 
+    svgPolygons : Polygon -> List (Svg Msg)
     svgPolygons pol =
-
       List.append
         [ exterior pol.exterior ]
-          <| List.map interior pol.interiors
+        <| List.map interior pol.interiors
   in
   svg
     [ InPx.width w
     , InPx.height h
     ]
-      <| List.concatMap svgPolygons projection.geodata
+    <| List.concatMap svgPolygons projection.geodata
       
 
 -- TODO: fix

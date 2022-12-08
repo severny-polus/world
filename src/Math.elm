@@ -11,4 +11,5 @@ type alias Ring =
   List Point
 
 
-type alias Point = (Float, Float)
+type alias Point =
+  (Float, Float)

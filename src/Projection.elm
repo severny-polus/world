@@ -22,6 +22,7 @@ type alias Projection =
 type alias Algorithm =
   { inscribe : Size -> Size
   , transform : Point -> Point
+  , filter : Polygon -> Bool
   }
 
 
@@ -101,12 +102,14 @@ view projection =
       List.append
         [ exterior pol.exterior ]
         <| List.map interior pol.interiors
+
   in
   svg
     [ InPx.width w
     , InPx.height h
     ]
-    <| List.concatMap svgPolygons projection.geodata
+    <| List.concatMap svgPolygons
+    <| List.filter projection.algorithm.filter projection.geodata
       
 
 -- TODO: fix
@@ -119,7 +122,9 @@ mecrator =
         else (w, w / 2)
   , transform =
     \(phi, theta) ->
-      (phi / pi, theta / (pi / 2))
+      (phi / pi, 1 - theta / (pi / 2))
+  , filter =
+    \_ -> True
   }
 
 
@@ -134,6 +139,12 @@ disc =
       polar
         (cos <| pi / 2 - theta / 2)
         (pi + phi)
+  , filter =
+    \pol ->
+      Maybe.withDefault False
+        <| Maybe.map ((<) -60)
+        <| List.maximum
+        <| List.map Tuple.second pol.exterior
   }
 
 

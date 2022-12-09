@@ -12025,7 +12025,7 @@ var $author$project$Projection$view = function (projection) {
 					$elm_community$typed_svg$TypedSvg$Attributes$stroke(
 					$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$black)),
 					$elm_community$typed_svg$TypedSvg$Attributes$fill(
-					$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$white)),
+					$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$black)),
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(1)
 				]),
 			_List_Nil);

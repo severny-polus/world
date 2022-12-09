@@ -83,7 +83,7 @@ view projection =
       polygon
         [ points <| List.map project ring
         , stroke <| Paint Color.black
-        , fill <| Paint Color.white
+        , fill <| Paint Color.black
         , InPx.strokeWidth 1
         ]
         []

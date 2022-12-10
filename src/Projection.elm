@@ -130,27 +130,45 @@ mecrator =
 
 disc : Algorithm
 disc =
-  { inscribe =
-    \(w, h) ->
-      let a = min w h
-      in (a, a)
+  { inscribe = minSquare
   , transform =
     \(phi, theta) ->
       polar
-        (cos <| pi / 2 - theta / 2)
+        ((cos <| pi / 2 - theta / 2) / (cos <| pi / 12))
         (pi + phi)
-  , filter =
-    \pol ->
-      Maybe.withDefault False
-        <| Maybe.map ((<) -60)
-        <| List.maximum
-        <| List.map Tuple.second pol.exterior
+  , filter = dropAntarctica
   }
+
+
+semisphere : Algorithm
+semisphere =
+  { inscribe = minSquare
+  , transform =
+    \(phi, theta) ->
+      polar
+        ((theta / 2) / pi * 2 * 6 / 5)
+        (pi + phi)
+  , filter = dropAntarctica
+  }
+
+
+minSquare : Size -> Size
+minSquare (w, h) =
+  let a = min w h
+  in (a, a)
 
 
 polar : Float -> Float -> Point
 polar r phi =
   (r * cos phi, r * sin phi)
+
+
+dropAntarctica : Polygon -> Bool
+dropAntarctica pol =
+  Maybe.withDefault False
+    <| Maybe.map ((<) -60)
+    <| List.maximum
+    <| List.map Tuple.second pol.exterior
 
 
 mod : Float -> Float -> Float

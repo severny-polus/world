@@ -66,7 +66,7 @@ update msg model =
       { model
       | projection =
         Maybe.map
-          (Projection.init Projection.disc (scene.width, scene.height))
+          (Projection.init Projection.semisphere (scene.width, scene.height))
           <| getGeodata model.geojson
       }
 

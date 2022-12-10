@@ -5767,6 +5767,82 @@ var $author$project$Projection$AngleChange = function (a) {
 var $author$project$Projection$Size = function (a) {
 	return {$: 0, a: a};
 };
+var $elm$core$Basics$cos = _Basics_cos;
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (!maybe.$) {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$List$maximum = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(
+			A3($elm$core$List$foldl, $elm$core$Basics$max, x, xs));
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (!maybe.$) {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Projection$dropAntarctica = function (pol) {
+	return A2(
+		$elm$core$Maybe$withDefault,
+		false,
+		A2(
+			$elm$core$Maybe$map,
+			$elm$core$Basics$lt(-60),
+			$elm$core$List$maximum(
+				A2($elm$core$List$map, $elm$core$Tuple$second, pol.cx))));
+};
+var $elm$core$Basics$min = F2(
+	function (x, y) {
+		return (_Utils_cmp(x, y) < 0) ? x : y;
+	});
+var $author$project$Projection$minSquare = function (_v0) {
+	var w = _v0.a;
+	var h = _v0.b;
+	var a = A2($elm$core$Basics$min, w, h);
+	return _Utils_Tuple2(a, a);
+};
+var $elm$core$Basics$sin = _Basics_sin;
+var $author$project$Projection$polar = F2(
+	function (r, phi) {
+		return _Utils_Tuple2(
+			r * $elm$core$Basics$cos(phi),
+			r * $elm$core$Basics$sin(phi));
+	});
+var $author$project$Projection$disc = {
+	ag: $author$project$Projection$dropAntarctica,
+	ah: $author$project$Projection$minSquare,
+	am: function (_v0) {
+		var phi = _v0.a;
+		var theta = _v0.b;
+		return A2(
+			$author$project$Projection$polar,
+			$elm$core$Basics$cos(($elm$core$Basics$pi / 2) - (theta / 2)) / $elm$core$Basics$cos($elm$core$Basics$pi / 12),
+			$elm$core$Basics$pi + phi);
+	}
+};
 var $elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
 		if (!maybeValue.$) {
@@ -5926,81 +6002,8 @@ var $author$project$Projection$init = F3(
 	function (algorithm, size, geodata) {
 		return {ac: algorithm, ae: 0, aJ: geodata, aA: size};
 	});
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (!maybe.$) {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$List$maximum = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(
-			A3($elm$core$List$foldl, $elm$core$Basics$max, x, xs));
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (!maybe.$) {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
-var $author$project$Projection$dropAntarctica = function (pol) {
-	return A2(
-		$elm$core$Maybe$withDefault,
-		false,
-		A2(
-			$elm$core$Maybe$map,
-			$elm$core$Basics$lt(-60),
-			$elm$core$List$maximum(
-				A2($elm$core$List$map, $elm$core$Tuple$second, pol.cx))));
-};
-var $elm$core$Basics$min = F2(
-	function (x, y) {
-		return (_Utils_cmp(x, y) < 0) ? x : y;
-	});
-var $author$project$Projection$minSquare = function (_v0) {
-	var w = _v0.a;
-	var h = _v0.b;
-	var a = A2($elm$core$Basics$min, w, h);
-	return _Utils_Tuple2(a, a);
-};
-var $elm$core$Basics$cos = _Basics_cos;
-var $elm$core$Basics$sin = _Basics_sin;
-var $author$project$Projection$polar = F2(
-	function (r, phi) {
-		return _Utils_Tuple2(
-			r * $elm$core$Basics$cos(phi),
-			r * $elm$core$Basics$sin(phi));
-	});
-var $author$project$Projection$semisphere = {
-	ag: $author$project$Projection$dropAntarctica,
-	ah: $author$project$Projection$minSquare,
-	am: function (_v0) {
-		var phi = _v0.a;
-		var theta = _v0.b;
-		return A2($author$project$Projection$polar, ((((theta / 2) / $elm$core$Basics$pi) * 2) * 6) / 5, $elm$core$Basics$pi + phi);
-	}
-};
 var $author$project$Projection$update = F2(
 	function (msg, projection) {
 		if (!msg.$) {
@@ -6029,7 +6032,7 @@ var $author$project$Main$update = F2(
 									$elm$core$Maybe$map,
 									A2(
 										$author$project$Projection$init,
-										$author$project$Projection$semisphere,
+										$author$project$Projection$disc,
 										_Utils_Tuple2(scene.dO, scene.cC)),
 									$author$project$Main$getGeodata(model.aK))
 							});

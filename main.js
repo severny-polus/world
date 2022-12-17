@@ -5837,9 +5837,10 @@ var $author$project$Projection$disc = {
 	am: function (_v0) {
 		var phi = _v0.a;
 		var theta = _v0.b;
+		var postFilterMultiplier = 1 / $elm$core$Basics$cos($elm$core$Basics$pi / 12);
 		return A2(
 			$author$project$Projection$polar,
-			$elm$core$Basics$cos(($elm$core$Basics$pi / 2) - (theta / 2)) / $elm$core$Basics$cos($elm$core$Basics$pi / 12),
+			postFilterMultiplier * $elm$core$Basics$cos(($elm$core$Basics$pi / 2) - (theta / 2)),
 			$elm$core$Basics$pi + phi);
 	}
 };

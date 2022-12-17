@@ -133,8 +133,12 @@ disc =
   { inscribe = minSquare
   , transform =
     \(phi, theta) ->
+      let
+        postFilterMultiplier =
+          1 / cos (pi / 12)
+      in
       polar
-        ((cos <| pi / 2 - theta / 2) / (cos <| pi / 12))
+        (postFilterMultiplier * sin (theta / 2))
         (pi + phi)
   , filter = dropAntarctica
   }
@@ -145,8 +149,12 @@ semisphere =
   { inscribe = minSquare
   , transform =
     \(phi, theta) ->
+      let
+        postFilterMultiplier =
+          6 / 5
+      in
       polar
-        ((theta / 2) / pi * 2 * 6 / 5)
+        (postFilterMultiplier * (theta / 2) / (pi / 2))
         (pi + phi)
   , filter = dropAntarctica
   }
@@ -173,4 +181,4 @@ dropAntarctica pol =
 
 mod : Float -> Float -> Float
 mod x y =
-  x - y * (toFloat <| truncate <| x / y)
+  x - y * (toFloat <| floor <| x / y)

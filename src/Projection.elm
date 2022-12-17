@@ -12,17 +12,9 @@ import TypedSvg.Types exposing (Paint(..))
 
 
 type alias Projection =
-  { algorithm : Algorithm
-  , size : Size
+  { size : Size
   , geodata : Geodata
   , angle : Float
-  }
-
-
-type alias Algorithm =
-  { inscribe : Size -> Size
-  , transform : Point -> Point
-  , filter : Polygon -> Bool
   }
 
 
@@ -39,10 +31,9 @@ type Msg
   | AngleChange Float
 
 
-init : Algorithm -> Size -> Geodata -> Projection
-init algorithm size geodata =
-  { algorithm = algorithm
-  , angle = 0
+init : Size -> Geodata -> Projection
+init size geodata =
+  { angle = 0
   , size = size
   , geodata = geodata
   }
@@ -62,13 +53,22 @@ view : Projection -> Html Msg
 view projection =
   let
     (w, h) =
-      projection.algorithm.inscribe projection.size
+      minSquare projection.size
 
     scale (x, y) =
       ((1 + x) * w / 2, (1 - y) * h / 2)
 
-    rotate (lng, lat) =
-      (lng + projection.angle, lat)
+    transform (phi, theta) =
+      let
+        postFilterMultiplier =
+          1 / cos (pi / 12)
+      in
+      polar
+        (postFilterMultiplier * sin (theta / 2))
+        (pi + phi)
+
+    rotate (phi, theta) =
+      (phi + projection.angle, theta)
 
     spherical (lng, lat) =
       (degrees lng, pi / 2 - degrees lat)
@@ -76,7 +76,7 @@ view projection =
     project =
       spherical
         >> rotate
-        >> projection.algorithm.transform
+        >> transform
         >> scale
 
     exterior ring =
@@ -109,55 +109,7 @@ view projection =
     , InPx.height h
     ]
     <| List.concatMap svgPolygons
-    <| List.filter projection.algorithm.filter projection.geodata
-      
-
--- TODO: fix
-mecrator : Algorithm
-mecrator =
-  { inscribe =
-    \(w, h) ->
-      if w > 2 * h
-        then (2 * h, h)
-        else (w, w / 2)
-  , transform =
-    \(phi, theta) ->
-      (phi / pi, 1 - theta / (pi / 2))
-  , filter =
-    \_ -> True
-  }
-
-
-disc : Algorithm
-disc =
-  { inscribe = minSquare
-  , transform =
-    \(phi, theta) ->
-      let
-        postFilterMultiplier =
-          1 / cos (pi / 12)
-      in
-      polar
-        (postFilterMultiplier * sin (theta / 2))
-        (pi + phi)
-  , filter = dropAntarctica
-  }
-
-
-semisphere : Algorithm
-semisphere =
-  { inscribe = minSquare
-  , transform =
-    \(phi, theta) ->
-      let
-        postFilterMultiplier =
-          6 / 5
-      in
-      polar
-        (postFilterMultiplier * (theta / 2) / (pi / 2))
-        (pi + phi)
-  , filter = dropAntarctica
-  }
+    <| List.filter dropAntarctica projection.geodata
 
 
 minSquare : Size -> Size

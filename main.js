@@ -11794,7 +11794,6 @@ var $avh4$elm_color$Color$RgbaSpace = F4(
 		return {$: 0, a: a, b: b, c: c, d: d};
 	});
 var $avh4$elm_color$Color$black = A4($avh4$elm_color$Color$RgbaSpace, 0 / 255, 0 / 255, 0 / 255, 1.0);
-var $elm$core$Basics$cos = _Basics_cos;
 var $elm$core$Basics$degrees = function (angleInDegrees) {
 	return (angleInDegrees * $elm$core$Basics$pi) / 180;
 };
@@ -11936,13 +11935,6 @@ var $elm_community$typed_svg$TypedSvg$Attributes$points = function (pts) {
 			' ',
 			A2($elm$core$List$map, pointToString, pts)));
 };
-var $elm$core$Basics$sin = _Basics_sin;
-var $author$project$Projection$polar = F2(
-	function (r, phi) {
-		return _Utils_Tuple2(
-			r * $elm$core$Basics$cos(phi),
-			r * $elm$core$Basics$sin(phi));
-	});
 var $elm$virtual_dom$VirtualDom$nodeNS = function (tag) {
 	return _VirtualDom_nodeNS(
 		_VirtualDom_noScript(tag));
@@ -11964,6 +11956,23 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth = function (va
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
 var $elm_community$typed_svg$TypedSvg$svg = $elm_community$typed_svg$TypedSvg$Core$node('svg');
+var $elm$core$Basics$cos = _Basics_cos;
+var $elm$core$Basics$sin = _Basics_sin;
+var $author$project$Projection$polar = F2(
+	function (r, phi) {
+		return _Utils_Tuple2(
+			r * $elm$core$Basics$cos(phi),
+			r * $elm$core$Basics$sin(phi));
+	});
+var $author$project$Projection$transform = function (_v0) {
+	var phi = _v0.a;
+	var theta = _v0.b;
+	var postFilterMultiplier = 1 / $elm$core$Basics$cos($elm$core$Basics$pi / 12);
+	return A2(
+		$author$project$Projection$polar,
+		postFilterMultiplier * $elm$core$Basics$sin(theta / 2),
+		$elm$core$Basics$pi + phi);
+};
 var $avh4$elm_color$Color$white = A4($avh4$elm_color$Color$RgbaSpace, 255 / 255, 255 / 255, 255 / 255, 1.0);
 var $elm_community$typed_svg$TypedSvg$Attributes$width = function (length) {
 	return A2(
@@ -11976,15 +11985,6 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$width = function (value) {
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
 var $author$project$Projection$view = function (projection) {
-	var transform = function (_v4) {
-		var phi = _v4.a;
-		var theta = _v4.b;
-		var postFilterMultiplier = 1 / $elm$core$Basics$cos($elm$core$Basics$pi / 12);
-		return A2(
-			$author$project$Projection$polar,
-			postFilterMultiplier * $elm$core$Basics$sin(theta / 2),
-			$elm$core$Basics$pi + phi);
-	};
 	var spherical = function (_v3) {
 		var lng = _v3.a;
 		var lat = _v3.b;
@@ -12011,7 +12011,7 @@ var $author$project$Projection$view = function (projection) {
 		A2(
 			$elm$core$Basics$composeR,
 			rotate,
-			A2($elm$core$Basics$composeR, transform, scale)));
+			A2($elm$core$Basics$composeR, $author$project$Projection$transform, scale)));
 	var exterior = function (ring) {
 		return A2(
 			$elm_community$typed_svg$TypedSvg$polygon,

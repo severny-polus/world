@@ -58,15 +58,6 @@ view projection =
     scale (x, y) =
       ((1 + x) * w / 2, (1 - y) * h / 2)
 
-    transform (phi, theta) =
-      let
-        postFilterMultiplier =
-          1 / cos (pi / 12)
-      in
-      polar
-        (postFilterMultiplier * sin (theta / 2))
-        (pi + phi)
-
     rotate (phi, theta) =
       (phi + projection.angle, theta)
 
@@ -116,6 +107,17 @@ minSquare : Size -> Size
 minSquare (w, h) =
   let a = min w h
   in (a, a)
+
+
+transform : Point -> Point
+transform (phi, theta) =
+  let
+    postFilterMultiplier =
+      1 / cos (pi / 12)
+  in
+  polar
+    (postFilterMultiplier * sin (theta / 2))
+    (pi + phi)
 
 
 polar : Float -> Float -> Point

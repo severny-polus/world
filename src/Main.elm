@@ -22,8 +22,15 @@ main =
 
 type alias Model =
   { projection : Maybe Projection
-  , geojson : String
+  , flags : Flags
   , anglePerSecond : Float
+  }
+
+
+type alias Flags =
+  { landWithoutAntarctica : String
+  , antarctica : String
+  , end : String
   }
 
 
@@ -34,10 +41,10 @@ type Msg
   | ProjectionMsg Projection.Msg
 
 
-init : String -> (Model, Cmd Msg)
-init geojson =
+init : Flags -> (Model, Cmd Msg)
+init flags =
   ( { projection = Nothing
-    , geojson = geojson
+    , flags = flags
     , anglePerSecond = 2 * pi / 360
     }
   , Task.perform (.scene >> Scene) Browser.Dom.getViewport
@@ -65,9 +72,10 @@ update msg model =
     Scene scene ->
       { model
       | projection =
-        Maybe.map
-          (Projection.init (scene.width, scene.height))
-          <| getGeodata model.geojson
+          Maybe.map2
+            (Projection.init (scene.width, scene.height))
+            (getGeodata (Debug.log "noAntarctica" model.flags.landWithoutAntarctica))
+            (getGeodata (Debug.log "antarctica" model.flags.antarctica))
       }
 
     Resize width height ->

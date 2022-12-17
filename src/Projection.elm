@@ -13,7 +13,8 @@ import TypedSvg.Types exposing (Paint(..))
 
 type alias Projection =
   { size : Size
-  , geodata : Geodata
+  , land : Geodata
+  , antarctica : Geodata
   , angle : Float
   }
 
@@ -31,11 +32,12 @@ type Msg
   | AngleChange Float
 
 
-init : Size -> Geodata -> Projection
-init size geodata =
+init : Size -> Geodata -> Geodata -> Projection
+init size land antarctica =
   { angle = 0
   , size = size
-  , geodata = geodata
+  , land = land
+  , antarctica = antarctica
   }
 
 
@@ -93,11 +95,19 @@ view projection =
         ]
         []
 
-    svgPolygons : Polygon -> List (Svg Msg)
-    svgPolygons pol =
-      List.append
-        [ exterior pol.exterior ]
-        <| List.map interior pol.interiors
+    polygons : Polygon -> List (Svg Msg)
+    polygons pol =
+      List.concat
+        [ [ exterior pol.exterior ]
+        , List.map interior pol.interiors
+        ]
+
+    outerPolygons : Polygon -> List (Svg Msg)
+    outerPolygons pol =
+      List.concat
+        [ [ interior pol.exterior ]
+        , List.map interior pol.interiors
+        ]
 
   in
   svg
@@ -109,12 +119,12 @@ view projection =
           [ InPx.cx <| w / 2
           , InPx.cy <| h / 2
           , InPx.r <| a / 2
-          , fill <| Paint colorWater
+          , fill <| Paint colorEarth
           ]
           []
         ]
-      , List.concatMap svgPolygons
-        <| List.filter dropAntarctica projection.geodata
+      , List.concatMap outerPolygons projection.antarctica
+      , List.concatMap polygons projection.land
       ]
 
 
@@ -126,12 +136,8 @@ minSquare (w, h) =
 
 transform : Point -> Point
 transform (phi, theta) =
-  let
-    postFilterMultiplier =
-      1 / cos (pi / 12)
-  in
   polar
-    (postFilterMultiplier * sin (theta / 2))
+    (sin <| theta / 2)
     (pi + phi)
 
 

@@ -1,10 +1,10 @@
 module Projection exposing (..)
 
 
-import Color
+import Color exposing (Color, rgb255)
 import Html exposing (Html)
 import Math exposing (Point, Polygon)
-import TypedSvg exposing (polygon, svg)
+import TypedSvg exposing (circle, polygon, svg)
 import TypedSvg.Attributes exposing (fill, points, stroke)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
@@ -52,8 +52,13 @@ update msg projection =
 view : Projection -> Html Msg
 view projection =
   let
+    a =
+      min
+        (Tuple.first projection.size)
+        (Tuple.second projection.size)
+
     (w, h) =
-      minSquare projection.size
+      (a, a)
 
     scale (x, y) =
       ((1 + x) * w / 2, (1 - y) * h / 2)
@@ -74,7 +79,7 @@ view projection =
       polygon
         [ points <| List.map project ring
         , stroke <| Paint Color.black
-        , fill <| Paint Color.black
+        , fill <| Paint colorEarth
         , InPx.strokeWidth 1
         ]
         []
@@ -83,7 +88,7 @@ view projection =
       polygon
         [ points <| List.map project ring
         , stroke <| Paint Color.black
-        , fill <| Paint Color.white
+        , fill <| Paint colorWater
         , InPx.strokeWidth 1
         ]
         []
@@ -99,8 +104,18 @@ view projection =
     [ InPx.width w
     , InPx.height h
     ]
-    <| List.concatMap svgPolygons
-    <| List.filter dropAntarctica projection.geodata
+    <| List.concat
+      [ [ circle
+          [ InPx.cx <| w / 2
+          , InPx.cy <| h / 2
+          , InPx.r <| a / 2
+          , fill <| Paint colorWater
+          ]
+          []
+        ]
+      , List.concatMap svgPolygons
+        <| List.filter dropAntarctica projection.geodata
+      ]
 
 
 minSquare : Size -> Size
@@ -136,3 +151,13 @@ dropAntarctica pol =
 mod : Float -> Float -> Float
 mod x y =
   x - y * (toFloat <| floor <| x / y)
+
+
+colorWater : Color
+colorWater =
+  rgb255 46 122 197
+
+
+colorEarth : Color
+colorEarth =
+  rgb255 0 165 84

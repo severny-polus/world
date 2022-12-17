@@ -29,8 +29,7 @@ type alias Model =
 
 type alias Flags =
   { landWithoutAntarctica : String
-  , antarctica : String
-  , end : String
+  , landAntarctica : String
   }
 
 
@@ -74,8 +73,8 @@ update msg model =
       | projection =
           Maybe.map2
             (Projection.init (scene.width, scene.height))
-            (getGeodata (Debug.log "noAntarctica" model.flags.landWithoutAntarctica))
-            (getGeodata (Debug.log "antarctica" model.flags.antarctica))
+            (getGeodata model.flags.landWithoutAntarctica)
+            (getGeodata model.flags.landAntarctica)
       }
 
     Resize width height ->

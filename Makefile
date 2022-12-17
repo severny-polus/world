@@ -1,13 +1,13 @@
 all: main.js
 
 main.js: $(wildcard src/*) flags.js
-	elm make src/Main.elm --optimize --output=
+	elm make src/Main.elm --optimize --output=$@
 
 unoptimized: $(wildcard src/*) flags.js
 	elm make src/Main.elm --output=main.js
 
 flags = flags.js
-geodata = landWithoutAntarctica antarctica
+geodata = landWithoutAntarctica landAntarctica
 
 flags.js: open_flags $(geodata) close_flags
 

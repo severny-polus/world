@@ -54,16 +54,14 @@ update msg projection =
 view : Projection -> Html Msg
 view projection =
   let
-    a =
-      min
-        (Tuple.first projection.size)
-        (Tuple.second projection.size)
-
     (w, h) =
-      (a, a)
+      projection.size
+
+    a =
+      min w h
 
     scale (x, y) =
-      ((1 + x) * w / 2, (1 - y) * h / 2)
+      (w / 2 + x * a / 2, h / 2 - y * a / 2)
 
     rotate (phi, theta) =
       (phi + projection.angle, theta)

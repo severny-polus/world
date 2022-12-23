@@ -1,6 +1,9 @@
-all: elm.min.js flags.js
+all: elm.js flags.js
+	cp elm.js elm.min.js
 
 debug: elm.js_unoptimized flags.js
+
+release: elm.min.js flags.js
 
 elm.js: $(wildcard src/*)
 	elm make src/Main.elm --optimize --output=$@

@@ -22,6 +22,7 @@ type alias Projection =
   , angleOld : Float
   , angleChange : Float
   , rotationParameter : Float
+  , zoom : Float
   }
 
 
@@ -44,7 +45,7 @@ init : Geodata -> Geodata -> (Projection, Cmd Msg)
 init exceptAntarctica antarctica =
   let
     initAngle =
-      degrees -177
+      pi + degrees 56
   in
   ( { size = (0, 0)
     , exceptAntarctica = exceptAntarctica
@@ -53,6 +54,7 @@ init exceptAntarctica antarctica =
     , angleOld = initAngle
     , angleChange = 0
     , rotationParameter = 0
+    , zoom = 1
     }
   , Browser.Dom.getElement "projection"
     |> Task.attempt (Result.toMaybe >> Element)
@@ -142,7 +144,7 @@ view projection =
     project =
       spherical
         >> rotate
-        >> transform
+        >> transform projection.zoom
         >> scale
 
     exterior ring =
@@ -187,7 +189,7 @@ view projection =
       [ [ circle
           [ InPx.cx <| w / 2
           , InPx.cy <| h / 2
-          , InPx.r <| a / 2
+          , InPx.r <| a / 2 * projection.zoom
           , fill <| Paint colorLand
           ]
           []
@@ -199,12 +201,12 @@ view projection =
 
 r : Float -> Float
 r theta =
-  theta / 2 - (theta / 2) ^ 3 / 6 + (theta / 2) ^ 5 / 120
+  sin <| theta / 2
 
 
-transform : Point -> Point
-transform (phi, theta) =
-  fromPolar (r theta / r pi) phi
+transform : Float -> Point -> Point
+transform zoom (phi, theta) =
+  fromPolar (zoom * r (theta / zoom) / r (pi / zoom)) phi
 
 
 fromPolar : Float -> Float -> Point

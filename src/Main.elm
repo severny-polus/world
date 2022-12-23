@@ -1,14 +1,11 @@
 module Main exposing (main)
 
 import Browser
-import Browser.Dom
-import Browser.Events
-import Element exposing (centerX, centerY, el, layout, width)
+import Element exposing (centerX, centerY, el, fill, height, layout, width)
 import GeoJson exposing (GeoJson)
 import Html exposing (Html)
 import Json.Decode as Json
 import Projection exposing (Projection)
-import Task
 
 
 main =
@@ -21,9 +18,7 @@ main =
 
 
 type alias Model =
-  { projection : Maybe Projection
-  , flags : Flags
-  , anglePerSecond : Float
+  { projection : Projection
   }
 
 
@@ -34,83 +29,65 @@ type alias Flags =
 
 
 type Msg
-  = Scene { width : Float, height : Float }
-  | Resize Int Int
-  | Frame Float
-  | ProjectionMsg Projection.Msg
+  = ProjectionMsg Projection.Msg
 
 
 init : Flags -> (Model, Cmd Msg)
 init flags =
-  ( { projection = Nothing
-    , flags = flags
-    , anglePerSecond = 2 * pi / 360
+  let
+    (projection, cmd) =
+      Projection.init
+        (parseGeodata flags.landWithoutAntarctica)
+        (parseGeodata flags.landAntarctica)
+  in
+  ( { projection = projection
     }
-  , Task.perform (.scene >> Scene) Browser.Dom.getViewport
+  , Cmd.map ProjectionMsg cmd
   )
 
 
-getGeodata : String -> Maybe Projection.Geodata
-getGeodata string =
+parseGeodata : String -> Projection.Geodata
+parseGeodata string =
   Json.decodeString GeoJson.decoder string
     |> Result.toMaybe
     |> Maybe.andThen GeoJson.toPolygons
+    |> Maybe.withDefault []
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-  Sub.batch
-    [ Browser.Events.onAnimationFrameDelta Frame
-    , Browser.Events.onResize Resize
+subscriptions model =
+  Sub.batch <| List.concat
+    [ [ Projection.subscriptions model.projection
+        |> Sub.map ProjectionMsg
+      ]
     ]
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  ( case msg of
-    Scene scene ->
-      { model
-      | projection =
-          Maybe.map2
-            (Projection.init (scene.width, scene.height))
-            (getGeodata model.flags.landWithoutAntarctica)
-            (getGeodata model.flags.landAntarctica)
-      }
-
-    Resize width height ->
-      { model
-      | projection =
-        Maybe.map
-          (Projection.update <| Projection.Size (toFloat width, toFloat height))
-          model.projection
-      }
-
-    Frame ms ->
-      { model
-      | projection =
-        Maybe.map
-          (Projection.update <| Projection.AngleChange <| model.anglePerSecond * ms / 1000)
-          model.projection
-      }
-
-    _ ->
-      model
-  , Cmd.none
-  )
+  case msg of
+    ProjectionMsg projectionMsg ->
+      let
+        (projection, cmd) =
+          Projection.update projectionMsg model.projection
+      in
+      ( { model | projection = projection }
+      , Cmd.map ProjectionMsg cmd
+      )
 
 
 view : Model -> Html Msg
 view model =
-  layout []
-    <| case model.projection of
-      Just projection ->
-        el
-          [ centerX
-          , centerY
-          ]
-          <| Element.html
-          <| Html.map ProjectionMsg
-          <| Projection.view projection
-
-      Nothing ->
-        Element.none
+  layout
+    [ width fill
+    , height fill
+    ]
+    <| el
+      [ centerX
+      , centerY
+      , width fill
+      , height fill
+      ]
+      <| Element.html
+      <| Html.map ProjectionMsg
+      <| Projection.view model.projection

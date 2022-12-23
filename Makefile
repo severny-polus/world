@@ -1,25 +1,29 @@
-all: main.js
+all: elm.min.js flags.js
 
-main.js: $(wildcard src/*) flags.js
+debug: elm.js_unoptimized flags.js
+
+elm.js: $(wildcard src/*)
 	elm make src/Main.elm --optimize --output=$@
 
-unoptimized: $(wildcard src/*) flags.js
-	elm make src/Main.elm --output=main.js
+elm.min.js: elm.js
+	uglifyjs $^ --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe' \
+		| uglifyjs --mangle --output $@
 
-flags = flags.js
+elm.js_unoptimized: $(wildcard src/*)
+	elm make src/Main.elm --output=elm.js
+
 geodata = landWithoutAntarctica landAntarctica
 
-flags.js: open_flags $(geodata) close_flags
+flags.js: $(foreach name,$(geodata),geodata/$(name).geo.json)
+	echo 'const flags = {' > $@
+	for name in $(geodata); do \
+  		echo "  $$name: \`" >> $@ && \
+		jq -c . < geodata/$$name.geo.json >> $@ && \
+		echo "  \`," >> $@; \
+  	done
+	echo '  end: ""' >> $@
+	echo '}' >> $@
 
-open_flags:
-	echo 'const flags = {' > $(flags)
-
-$(geodata): %: geodata/%.geo.json
-	echo "  $@: \`" >> $(flags)
-	jq -c . < geodata/$@.geo.json >> $(flags)
-	echo "  \`", >> $(flags)
-
-close_flags:
-	echo '  end: ""' >> $(flags)
-	echo '}' >> $(flags)
+clean:
+	rm elm.js flags.js
 

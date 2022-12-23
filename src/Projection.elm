@@ -19,9 +19,6 @@ type alias Projection =
   , exceptAntarctica : Geodata
   , antarctica : Geodata
   , angle : Float
-  , angleOld : Float
-  , angleChange : Float
-  , rotationParameter : Float
   , zoom : Float
   }
 
@@ -37,8 +34,6 @@ type alias Geodata =
 type Msg
   = Resize Int Int
   | Element (Maybe Browser.Dom.Element)
-  | ChangeAngle Float
-  | TimeDeltaMs Float
 
 
 init : Geodata -> Geodata -> (Projection, Cmd Msg)
@@ -51,9 +46,6 @@ init exceptAntarctica antarctica =
     , exceptAntarctica = exceptAntarctica
     , antarctica = antarctica
     , angle = initAngle
-    , angleOld = initAngle
-    , angleChange = 0
-    , rotationParameter = 0
     , zoom = 1
     }
   , Browser.Dom.getElement "projection"
@@ -65,10 +57,6 @@ subscriptions : Projection -> Sub Msg
 subscriptions projection =
   Sub.batch <| List.concat
     [ [ Browser.Events.onResize Resize ]
-    , if projection.angleChange /= 0 then
-        [ Browser.Events.onAnimationFrameDelta TimeDeltaMs ]
-      else
-        []
     ]
 
 
@@ -89,36 +77,6 @@ update msg projection =
               (Maybe.map (.element >> .width) element)
               (Maybe.map (.element >> .height) element)
         }
-      , Cmd.none
-      )
-
-    ChangeAngle _ ->
-      (projection, Cmd.none)
-
-    TimeDeltaMs deltaMs ->
-      let
-        dt =
-          deltaMs / rotationPeriodMs
-
-        t =
-          projection.rotationParameter + dt
-      in
-      ( if t < 1 then
-          { projection
-          | rotationParameter = t
-          , angle = projection.angleOld + projection.angleChange * rotationFunction projection.rotationParameter
-          }
-        else
-          let
-            angle =
-              projection.angleOld + projection.angleChange
-          in
-          { projection
-          | rotationParameter = 0
-          , angle = angle
-          , angleOld = angle
-          , angleChange = 0
-          }
       , Cmd.none
       )
 

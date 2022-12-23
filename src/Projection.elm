@@ -199,7 +199,7 @@ view projection =
 
 r : Float -> Float
 r theta =
-  theta / 2 - theta ^ 3 / 48
+  theta / 2 - (theta / 2) ^ 3 / 6 + (theta / 2) ^ 5 / 120
 
 
 transform : Point -> Point

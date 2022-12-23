@@ -10,7 +10,7 @@ elm.min.js: elm.js
 		| uglifyjs --mangle --output $@
 
 elm.js_unoptimized: $(wildcard src/*)
-	elm make src/Main.elm --output=elm.js
+	elm make src/Main.elm --output=elm.min.js
 
 geodata = landWithoutAntarctica landAntarctica
 
@@ -25,5 +25,5 @@ flags.js: $(foreach name,$(geodata),geodata/$(name).geo.json)
 	echo '}' >> $@
 
 clean:
-	rm elm.js flags.js
+	rm elm.js elm.min.js flags.js
 

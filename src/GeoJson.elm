@@ -61,15 +61,13 @@ decoder =
 getPolygons : GeoJson -> List Math.Polygon
 getPolygons =
   .features
-    >> List.map toPolygon
-    >> Maybe.Extra.values
+    >> List.filterMap toPolygon
 
 
 getLines : GeoJson -> List Math.Line
 getLines =
   .features
-    >> List.map toLine
-    >> Maybe.Extra.values
+    >> List.filterMap toLine
 
 
 toPolygon : Feature -> Maybe Math.Polygon

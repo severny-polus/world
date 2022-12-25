@@ -18,6 +18,8 @@ type alias Projection =
   { size : Size
   , geodata : Geodata
   , angle : Float
+  , angleVelocity : Float
+  , angleAcceleration : Float
   , zoom : Float
   }
 
@@ -37,6 +39,7 @@ type alias Geodata =
 type Msg
   = Resize Int Int
   | Element (Maybe Browser.Dom.Element)
+  | TimeDelta Float
 
 
 init : Geodata -> (Projection, Cmd Msg)
@@ -48,6 +51,8 @@ init geodata =
   ( { size = (0, 0)
     , geodata = geodata
     , angle = initAngle
+    , angleVelocity = pi / 12 / 60
+    , angleAcceleration = 0
     , zoom = 1
     }
   , Browser.Dom.getElement "projection"
@@ -58,7 +63,9 @@ init geodata =
 subscriptions : Projection -> Sub Msg
 subscriptions _ =
   Sub.batch <| List.concat
-    [ [ Browser.Events.onResize Resize ]
+    [ [ Browser.Events.onResize Resize
+      , Browser.Events.onAnimationFrameDelta TimeDelta
+      ]
     ]
 
 
@@ -71,13 +78,20 @@ update msg projection =
         |> Task.attempt (Result.toMaybe >> Element)
       )
 
-    Element element ->
+    Element maybeElement ->
+      ( case maybeElement of
+        Just element ->
+          { projection | size = (element.element.width, element.element.height) }
+
+        Nothing ->
+          projection
+      , Cmd.none
+      )
+
+    TimeDelta dt ->
       ( { projection
-        | size =
-          Maybe.withDefault (0, 0)
-            <| Maybe.map2 Tuple.pair
-              (Maybe.map (.element >> .width) element)
-              (Maybe.map (.element >> .height) element)
+        | angle = projection.angle + projection.angleVelocity * dt / 1000
+        , angleVelocity = projection.angleVelocity + projection.angleAcceleration * dt / 1000
         }
       , Cmd.none
       )
@@ -202,24 +216,3 @@ colorLand =
 colorWater : Color
 colorWater =
   rgb255 46 122 197
-
-
-rotationPeriodMs : Float
-rotationPeriodMs =
-  100
-
-
-rotationFunction : Float -> Float
-rotationFunction parameter =
-  if parameter < 0.5 then
-    2 * parameter ^ 2
-  else
-    1 - 2 * (parameter - 1) ^ 2
-
-
-rotationDerivative : Float -> Float
-rotationDerivative t =
-  if t < 0.5 then
-    4 * t
-  else
-    4 - 4 * t

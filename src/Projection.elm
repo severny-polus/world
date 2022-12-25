@@ -5,9 +5,9 @@ import Browser.Dom
 import Browser.Events
 import Color exposing (Color, rgb255)
 import Html exposing (Html)
-import Math exposing (Point, Polygon)
+import Math exposing (Line, Point, Polygon, Ring)
 import Task
-import TypedSvg exposing (circle, polygon, svg)
+import TypedSvg exposing (circle, polygon, polyline, svg)
 import TypedSvg.Attributes exposing (fill, height, id, points, stroke, width)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
@@ -16,8 +16,7 @@ import TypedSvg.Types exposing (Paint(..), percent)
 
 type alias Projection =
   { size : Size
-  , exceptAntarctica : Geodata
-  , antarctica : Geodata
+  , geodata : Geodata
   , angle : Float
   , zoom : Float
   }
@@ -28,7 +27,11 @@ type alias Size =
 
 
 type alias Geodata =
-  List Polygon
+  { landWithoutAntarctica : List Polygon
+  , landAntarctica : List Polygon
+  , rivers : List Line
+  , lakes : List Polygon
+  }
 
 
 type Msg
@@ -36,15 +39,14 @@ type Msg
   | Element (Maybe Browser.Dom.Element)
 
 
-init : Geodata -> Geodata -> (Projection, Cmd Msg)
-init exceptAntarctica antarctica =
+init : Geodata -> (Projection, Cmd Msg)
+init geodata =
   let
     initAngle =
       pi + degrees 56
   in
   ( { size = (0, 0)
-    , exceptAntarctica = exceptAntarctica
-    , antarctica = antarctica
+    , geodata = geodata
     , angle = initAngle
     , zoom = 1
     }
@@ -54,7 +56,7 @@ init exceptAntarctica antarctica =
 
 
 subscriptions : Projection -> Sub Msg
-subscriptions projection =
+subscriptions _ =
   Sub.batch <| List.concat
     [ [ Browser.Events.onResize Resize ]
     ]
@@ -105,7 +107,8 @@ view projection =
         >> transform projection.zoom
         >> scale
 
-    exterior ring =
+    land : Ring -> Svg Msg
+    land ring =
       polygon
         [ points <| List.map project ring
         , stroke <| Paint Color.black
@@ -114,7 +117,8 @@ view projection =
         ]
         []
 
-    interior ring =
+    water : Ring -> Svg Msg
+    water ring =
       polygon
         [ points <| List.map project ring
         , stroke <| Paint Color.black
@@ -123,19 +127,35 @@ view projection =
         ]
         []
 
-    polygons : Polygon -> List (Svg Msg)
-    polygons pol =
+    landWater : Polygon -> List (Svg Msg)
+    landWater pol =
       List.concat
-        [ [ exterior pol.exterior ]
-        , List.map interior pol.interiors
+        [ [ land pol.exterior ]
+        , List.map water pol.interiors
         ]
 
-    outerPolygons : Polygon -> List (Svg Msg)
-    outerPolygons pol =
+    waterWater : Polygon -> List (Svg Msg)
+    waterWater pol =
       List.concat
-        [ [ interior pol.exterior ]
-        , List.map interior pol.interiors
+        [ [ water pol.exterior ]
+        , List.map water pol.interiors
         ]
+
+    waterLand : Polygon -> List (Svg Msg)
+    waterLand pol =
+      List.concat
+        [ [ water pol.exterior ]
+        , List.map land pol.interiors
+        ]
+
+    river : Line -> Svg Msg
+    river line =
+      polyline
+        [ points <| List.map project line
+        , stroke <| Paint Color.black
+        , fill PaintNone
+        ]
+        []
 
   in
   svg
@@ -152,8 +172,10 @@ view projection =
           ]
           []
         ]
-      , List.concatMap outerPolygons projection.antarctica
-      , List.concatMap polygons projection.exceptAntarctica
+      , List.concatMap waterWater projection.geodata.landAntarctica
+      , List.concatMap landWater projection.geodata.landWithoutAntarctica
+      , List.map river projection.geodata.rivers
+      , List.concatMap waterLand projection.geodata.lakes
       ]
 
 

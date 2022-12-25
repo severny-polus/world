@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Element exposing (centerX, centerY, el, fill, height, layout, width)
-import GeoJson exposing (GeoJson)
+import GeoJson exposing (GeoJson, getLines, getPolygons)
 import Html exposing (Html)
 import Json.Decode as Json
 import Projection exposing (Projection)
@@ -25,6 +25,8 @@ type alias Model =
 type alias Flags =
   { landWithoutAntarctica : String
   , landAntarctica : String
+  , rivers : String
+  , lakes : String
   }
 
 
@@ -37,8 +39,11 @@ init flags =
   let
     (projection, cmd) =
       Projection.init
-        (parseGeodata flags.landWithoutAntarctica)
-        (parseGeodata flags.landAntarctica)
+        { landWithoutAntarctica = parse getPolygons flags.landWithoutAntarctica
+        , landAntarctica = parse getPolygons flags.landAntarctica
+        , rivers = parse getLines flags.rivers
+        , lakes = parse getPolygons flags.lakes
+        }
   in
   ( { projection = projection
     }
@@ -46,11 +51,11 @@ init flags =
   )
 
 
-parseGeodata : String -> Projection.Geodata
-parseGeodata string =
+parse : (GeoJson -> List a) -> String -> List a
+parse f string =
   Json.decodeString GeoJson.decoder string
     |> Result.toMaybe
-    |> Maybe.andThen GeoJson.toPolygons
+    |> Maybe.map f
     |> Maybe.withDefault []
 
 

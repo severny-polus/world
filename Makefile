@@ -15,7 +15,7 @@ elm.min.js: elm.js
 elm.js_unoptimized: $(wildcard src/*)
 	elm make src/Main.elm --output=elm.min.js
 
-geodata = landWithoutAntarctica landAntarctica
+geodata = landWithoutAntarctica landAntarctica rivers lakes
 
 flags.js: $(foreach name,$(geodata),geodata/$(name).geo.json)
 	echo 'const flags = {' > $@

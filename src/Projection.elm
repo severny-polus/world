@@ -4,6 +4,7 @@ module Projection exposing (..)
 import Browser.Dom
 import Browser.Events
 import Color exposing (Color, rgb255)
+import Geodata exposing (Geodata)
 import Html exposing (Html)
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
@@ -28,35 +29,27 @@ type alias Size =
   (Float, Float)
 
 
-type alias Geodata =
-  { landWithoutAntarctica : List Polygon
-  , landAntarctica : List Polygon
-  , rivers : List Line
-  , lakes : List Polygon
-  }
-
-
 type Msg
   = Resize Int Int
   | Element (Maybe Browser.Dom.Element)
+  | GeodataMsg Geodata.Msg
   | TimeDelta Float
 
 
-init : Geodata -> (Projection, Cmd Msg)
-init geodata =
+init : (Projection, Cmd Msg)
+init =
   let
     initAngle =
       pi + degrees 56
   in
   ( { size = (0, 0)
-    , geodata = geodata
+    , geodata = Geodata.init
     , angle = initAngle
     , angleVelocity = pi / 12 / 60
     , angleAcceleration = 0
     , zoom = 1
     }
-  , Browser.Dom.getElement "projection"
-    |> Task.attempt (Result.toMaybe >> Element)
+  , getElement
   )
 
 
@@ -73,10 +66,7 @@ update : Msg -> Projection -> (Projection, Cmd Msg)
 update msg projection =
   case msg of
     Resize _ _ ->
-      ( projection
-      , Browser.Dom.getElement "projection"
-        |> Task.attempt (Result.toMaybe >> Element)
-      )
+      ( projection, getElement )
 
     Element maybeElement ->
       ( case maybeElement of
@@ -88,6 +78,11 @@ update msg projection =
       , Cmd.none
       )
 
+    GeodataMsg geodataMsg ->
+      ( { projection | geodata = Geodata.update geodataMsg projection.geodata }
+      , Cmd.none
+      )
+
     TimeDelta dt ->
       ( { projection
         | angle = projection.angle + projection.angleVelocity * dt / 1000
@@ -95,6 +90,12 @@ update msg projection =
         }
       , Cmd.none
       )
+
+
+getElement : Cmd Msg
+getElement =
+  Browser.Dom.getElement "projection"
+    |> Task.attempt (Result.toMaybe >> Element)
 
 
 view : Projection -> Html Msg

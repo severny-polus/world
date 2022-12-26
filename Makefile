@@ -1,9 +1,9 @@
-all: flags.js elm.js
+all: elm.js
 	cp elm.js elm.min.js
 
-debug: flags.js elm.js_unoptimized
+debug: elm.js_unoptimized
 
-release: flags.js elm.min.js
+release: elm.min.js
 
 elm.js: $(wildcard src/*)
 	elm make src/Main.elm --optimize --output=$@
@@ -15,17 +15,14 @@ elm.min.js: elm.js
 elm.js_unoptimized: $(wildcard src/*)
 	elm make src/Main.elm --output=elm.min.js
 
-geodata = landWithoutAntarctica landAntarctica rivers lakes
+geodata = $(wildcard geodata/*.min.geo.json)
 
-flags.js: $(foreach name,$(geodata),geodata/$(name).geo.json)
-	echo 'const flags = {' > $@
-	for name in $(geodata); do \
-  		echo "  $$name: \`" >> $@ && \
-		jq -c . < geodata/$$name.geo.json >> $@ && \
-		echo "  \`," >> $@; \
-  	done
-	echo '  end: ""' >> $@
-	echo '}' >> $@
+minify: $(geodata)
+
+$(geodata): %.min.geo.json: %.geo.json
+
+%.min.geo.json:
+	jq -c . < $^ > $@
 
 clean:
 	rm elm.js elm.min.js flags.js

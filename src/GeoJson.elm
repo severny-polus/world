@@ -2,109 +2,45 @@ module GeoJson exposing (..)
 
 
 import Json.Decode as Json
-import Math
-import Maybe.Extra
+import Math exposing (Line, Point, Polygon)
 
 
-type alias GeoJson =
-  { features : List Feature
-  }
-
-
-type alias Feature =
-  { geometry : Geometry
-  }
-
-
-type Geometry
-  = Polygon Polygon
-  | LineString Line
-
-
-type alias Polygon =
-  List Ring
-
-
-type alias Ring =
-  List Point
-
-
-type alias Line =
-  List Point
-
-
-type alias Point =
-  List Float
-
-
-decoder : Json.Decoder GeoJson
-decoder =
-  Json.map GeoJson
-    <| Json.field "features"
+polygons : Json.Decoder (List Polygon)
+polygons =
+  Json.field "features"
+    <| Json.map (List.filterMap toPolygon)
     <| Json.list
-    <| Json.map Feature
     <| Json.field "geometry"
     <| Json.field "coordinates"
-    <| Json.oneOf
-      [ Json.map Polygon
-        <| Json.list
-        <| Json.list
-        <| Json.list
-        <| Json.float
-      , Json.map LineString
-        <| Json.list
-        <| Json.list
-        <| Json.float
-      ]
+    <| Json.list
+    <| points
 
 
-getPolygons : GeoJson -> List Math.Polygon
-getPolygons =
-  .features
-    >> List.filterMap toPolygon
+lines : Json.Decoder (List Line)
+lines =
+  Json.field "features"
+    <| Json.list
+    <| Json.field "geometry"
+    <| Json.field "coordinates"
+    <| points
 
 
-getLines : GeoJson -> List Math.Line
-getLines =
-  .features
-    >> List.filterMap toLine
+points : Json.Decoder (List Point)
+points =
+  Json.map (List.filterMap toPoint)
+    <| Json.list
+    <| Json.list
+    <| Json.float
 
 
-toPolygon : Feature -> Maybe Math.Polygon
-toPolygon feature =
-  case feature.geometry of
-    Polygon polygon ->
-      let
-        exterior =
-          List.head polygon
-
-        interiors =
-          List.tail polygon
-
-        toRing =
-          List.map toPoint
-            >> Maybe.Extra.combine
-      in
-      Maybe.map2 Math.Polygon
-        (Maybe.andThen toRing exterior)
-        (Maybe.andThen (List.map toRing >> Maybe.Extra.combine) interiors)
-
-    _ ->
-      Nothing
+toPolygon : List (List Point) -> Maybe Polygon
+toPolygon polygon =
+  Maybe.map2 Polygon
+    (List.head polygon)
+    (List.tail polygon)
 
 
-toLine : Feature -> Maybe Math.Line
-toLine feature =
-  case feature.geometry of
-    LineString line ->
-      List.map toPoint line
-        |> Maybe.Extra.combine
-
-    _ ->
-      Nothing
-
-
-toPoint : List Float -> Maybe Math.Point
+toPoint : List Float -> Maybe Point
 toPoint floats =
   case floats of
     [x, y] ->

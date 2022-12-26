@@ -164,7 +164,7 @@ view projection =
       (w / 2 + x * a / 2, h / 2 - y * a / 2)
 
     rotate (phi, theta) =
-      (phi + projection.angle + pi / 3 * (1 - projection.showParam), theta)
+      (phi + projection.angle + pi / 3 * (1 - projection.showParam ^ (1 / 2)), theta)
 
     spherical (lng, lat) =
       (degrees lng, pi / 2 - degrees lat)

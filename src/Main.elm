@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Element exposing (centerX, centerY, el, fill, height, layout, width)
 import GeoJson
-import Geodata exposing (Msg(..))
+import Geodata exposing (Geodata, Msg(..))
 import Html exposing (Html)
 import Http
 import Projection exposing (Projection)
@@ -31,7 +31,8 @@ main =
 
 
 type alias Model =
-  { projection : Projection
+  { geodata : Geodata
+  , projection : Projection
   , requestsLeft : Int
   , error : Maybe Http.Error
   }
@@ -67,7 +68,8 @@ init _ =
     (projection, cmd) =
       Projection.init
   in
-  ( { projection = projection
+  ( { geodata = Geodata.init
+    , projection = projection
     , requestsLeft = List.length requests
     , error = Nothing
     }
@@ -95,9 +97,19 @@ update msg model =
     GeodataResult result ->
       case result of
         Ok geodataMsg ->
-          update
-            (ProjectionMsg <| Projection.GeodataMsg geodataMsg)
-            { model | requestsLeft = model.requestsLeft - 1 }
+          let
+            modelNew =
+              { model
+              | geodata = Geodata.update geodataMsg model.geodata
+              , requestsLeft = model.requestsLeft - 1
+              }
+          in
+          if modelNew.requestsLeft == 0 then
+            update
+              (ProjectionMsg <| Projection.SetGeodata modelNew.geodata)
+              modelNew
+          else
+            ( modelNew, Cmd.none )
 
         Err error ->
           ( { model | error = Just error }

@@ -38,7 +38,7 @@ update msg geodata =
       { geodata | landAntarctica = polygons }
 
     Lakes polygons ->
-      { geodata | lakes = polygons}
+      { geodata | lakes = polygons }
 
     Rivers lines ->
-      { geodata | rivers = lines}
+      { geodata | rivers = lines }

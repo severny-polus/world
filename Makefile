@@ -25,5 +25,5 @@ $(geodata): %.min.geo.json: %.geo.json
 	jq -c . < $^ > $@
 
 clean:
-	rm elm.js elm.min.js flags.js
+	rm elm.js elm.min.js
 

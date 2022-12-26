@@ -95,10 +95,12 @@ update msg model =
     GeodataResult result ->
       case result of
         Ok geodataMsg ->
-          update (ProjectionMsg <| Projection.GeodataMsg geodataMsg) model
+          update
+            (ProjectionMsg <| Projection.GeodataMsg geodataMsg)
+            { model | requestsLeft = model.requestsLeft - 1 }
 
         Err error ->
-          ( { model | error = Just (Debug.log "error" error) }
+          ( { model | error = Just error }
           , Cmd.none
           )
 

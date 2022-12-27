@@ -120,6 +120,7 @@ update msg projection =
             | showParam = maxShowParam
             , showParamVelocity = 0
             , showParamAcceleration = 0
+            , angleVelocity = initAngleVelocity
             }
       , Cmd.none
       )
@@ -148,7 +149,7 @@ maxShowParam =
 
 maxShowParamAcceleration : Float
 maxShowParamAcceleration =
-  2
+  5
 
 
 view : Projection -> Html Msg
@@ -161,18 +162,24 @@ view projection =
       min w h
 
     z =
-      projection.zoom / projection.showParam
+      projection.zoom / (2 - projection.showParam)
 
     scale (x, y) =
       (w / 2 + x * a / 2, h / 2 - y * a / 2)
 
+    transformTheta theta =
+      z * r (theta / z) / r (pi / projection.zoom)
+
     transform (phi, theta) =
       fromPolar
-        (z * r (theta / z) / r (pi / z))
+        (transformTheta theta)
         phi
 
+    r theta =
+      sin <| min theta pi / 2
+
     rotate (phi, theta) =
-      (phi + projection.angle + pi / 3 * (1 - projection.showParam ^ (1 / 2)), theta)
+      (phi + projection.angle - pi / 3 * (1 - sqrt projection.showParam), theta)
 
     spherical (lng, lat) =
       (degrees lng, pi / 2 - degrees lat)
@@ -244,7 +251,7 @@ view projection =
           [ [ circle
               [ InPx.cx <| w / 2
               , InPx.cy <| h / 2
-              , InPx.r <| a / 2 * z
+              , InPx.r <| a / 2 * transformTheta pi
               , fill <| Paint colorLand
               ]
               []
@@ -266,12 +273,6 @@ view projection =
 
       Nothing ->
         []
-
-
-
-r : Float -> Float
-r theta =
-  sin <| theta / 2
 
 
 fromPolar : Float -> Float -> Point

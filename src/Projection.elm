@@ -158,10 +158,18 @@ view projection =
       projection.size
 
     a =
-      projection.showParam * min w h
+      min w h
+
+    z =
+      projection.zoom / projection.showParam
 
     scale (x, y) =
       (w / 2 + x * a / 2, h / 2 - y * a / 2)
+
+    transform (phi, theta) =
+      fromPolar
+        (z * r (theta / z) / r (pi / z))
+        phi
 
     rotate (phi, theta) =
       (phi + projection.angle + pi / 3 * (1 - projection.showParam ^ (1 / 2)), theta)
@@ -172,7 +180,7 @@ view projection =
     project =
       spherical
         >> rotate
-        >> transform projection.zoom
+        >> transform
         >> scale
 
     land : Ring -> Svg Msg
@@ -236,7 +244,7 @@ view projection =
           [ [ circle
               [ InPx.cx <| w / 2
               , InPx.cy <| h / 2
-              , InPx.r <| a / 2 * projection.zoom
+              , InPx.r <| a / 2 * z
               , fill <| Paint colorLand
               ]
               []
@@ -264,11 +272,6 @@ view projection =
 r : Float -> Float
 r theta =
   sin <| theta / 2
-
-
-transform : Float -> Point -> Point
-transform zoom (phi, theta) =
-  fromPolar (zoom * r (theta / zoom) / r (pi / zoom)) phi
 
 
 fromPolar : Float -> Float -> Point

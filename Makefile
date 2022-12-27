@@ -1,9 +1,9 @@
-all: elm.js
+all: $(geodata) elm.js
 	cp elm.js elm.min.js
 
-debug: elm.js_unoptimized
+debug: $(geodata) elm.js_unoptimized
 
-release: elm.min.js
+release: $(geodata) elm.min.js
 
 elm.js: $(wildcard src/*)
 	elm make src/Main.elm --optimize --output=$@

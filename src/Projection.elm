@@ -1,6 +1,7 @@
 module Projection exposing (..)
 
 
+import Animation exposing (Animation)
 import Browser.Dom
 import Browser.Events
 import Color exposing (Color, rgb255)
@@ -18,13 +19,9 @@ import TypedSvg.Types exposing (Paint(..), percent)
 type alias Projection =
   { size : Size
   , geodata : Maybe Geodata
-  , angle : Float
-  , angleVelocity : Float
-  , angleAcceleration : Float
-  , showParam : Float
-  , showParamVelocity : Float
-  , showParamAcceleration : Float
-  , zoom : Float
+  , angle : Animation
+  , load : Animation
+  , zoom : Animation
   }
 
 
@@ -32,13 +29,9 @@ init : (Projection, Cmd Msg)
 init =
   ( { size = (0, 0)
     , geodata = Nothing
-    , angle = initAngle
-    , angleVelocity = 0
-    , angleAcceleration = 0
-    , showParam = 0
-    , showParamVelocity = 0
-    , showParamAcceleration = 0
-    , zoom = 1
+    , angle = Animation.init Animation.harmonic 500 <| -pi / 2
+    , load = Animation.init Animation.harmonic 500 0
+    , zoom = Animation.init Animation.harmonic 500 0
     }
   , getElement
   )
@@ -72,7 +65,12 @@ update msg projection =
     Element maybeElement ->
       ( case maybeElement of
         Just element ->
-          { projection | size = (element.element.width, element.element.height) }
+          { projection
+          | size =
+            ( element.element.width
+            , element.element.height
+            )
+          }
 
         Nothing ->
           projection
@@ -82,46 +80,19 @@ update msg projection =
     SetGeodata geodata ->
       ( { projection
         | geodata = Just geodata
-        , showParamAcceleration = maxShowParamAcceleration
+        , angle = Animation.to (-pi / 2 - degrees 38) projection.angle
+        , load = Animation.to 1 projection.load
+        , zoom = Animation.to 1 projection.zoom
         }
       , Cmd.none
       )
 
-    TimeDelta dtMs ->
-      let
-        dt =
-          dtMs / 1000
-      in
-      ( if projection.showParamAcceleration == 0 then
-          { projection
-          | angle = projection.angle + projection.angleVelocity * dt
-          , angleVelocity = projection.angleVelocity + projection.angleAcceleration * dt
-          }
-
-        else
-          let
-            showParam =
-              projection.showParam + projection.showParamVelocity * dt
-          in
-          if showParam < maxShowParam then
-            { projection
-            | showParam = showParam
-            , showParamVelocity = projection.showParamVelocity + projection.showParamAcceleration * dt
-            , showParamAcceleration =
-              if showParam < 0.5 then
-                maxShowParamAcceleration
-
-              else
-                -maxShowParamAcceleration
-            }
-
-          else
-            { projection
-            | showParam = maxShowParam
-            , showParamVelocity = 0
-            , showParamAcceleration = 0
-            , angleVelocity = initAngleVelocity
-            }
+    TimeDelta dt ->
+      ( { projection
+        | angle = Animation.move dt projection.angle
+        , load = Animation.move dt projection.load
+        , zoom = Animation.move dt projection.zoom
+        }
       , Cmd.none
       )
 
@@ -130,26 +101,6 @@ getElement : Cmd Msg
 getElement =
   Browser.Dom.getElement "projection"
     |> Task.attempt (Result.toMaybe >> Element)
-
-
-initAngle : Float
-initAngle =
-  pi + degrees 56
-
-
-initAngleVelocity : Float
-initAngleVelocity =
-  pi / 12 / 60
-
-
-maxShowParam : Float
-maxShowParam =
-  1
-
-
-maxShowParamAcceleration : Float
-maxShowParamAcceleration =
-  5
 
 
 view : Projection -> Html Msg
@@ -161,25 +112,32 @@ view projection =
     a =
       min w h
 
-    z =
-      projection.zoom / (2 - projection.showParam)
-
     scale (x, y) =
       (w / 2 + x * a / 2, h / 2 - y * a / 2)
 
+    r beta =
+      sin <| min beta (pi / 2)
+
+    z =
+      2 ^ projection.zoom.value
+
     transformTheta theta =
-      z * r (theta / z) / r (pi / projection.zoom)
+      let
+        beta =
+          theta / z
+
+        beta0 =
+          pi / z
+      in
+      0.5 * z * r beta / r beta0
 
     transform (phi, theta) =
       fromPolar
         (transformTheta theta)
         phi
 
-    r theta =
-      sin <| min theta pi / 2
-
     rotate (phi, theta) =
-      (phi + projection.angle - pi / 3 * (1 - sqrt projection.showParam), theta)
+      (phi + projection.angle.value, theta)
 
     spherical (lng, lat) =
       (degrees lng, pi / 2 - degrees lat)
@@ -265,7 +223,7 @@ view projection =
               , InPx.y 0
               , InPx.width w
               , InPx.height h
-              , fill <| Paint <| Color.rgba 1 1 1 (1 - projection.showParam)
+              , fill <| Paint <| Color.rgba 1 1 1 (1 - projection.load.value)
               ]
               []
             ]

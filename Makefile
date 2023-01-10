@@ -27,3 +27,6 @@ $(geodata): %.min.geo.json: %.geo.json
 clean:
 	rm elm.js elm.min.js
 
+clean.release:
+	rm elm.min.js
+

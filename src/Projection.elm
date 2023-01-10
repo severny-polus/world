@@ -10,7 +10,7 @@ import Html exposing (Html)
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
-import TypedSvg.Attributes exposing (fill, height, id, points, stroke, width)
+import TypedSvg.Attributes exposing (fill, height, id, points, stroke, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), percent)
@@ -105,132 +105,148 @@ getElement =
 
 view : Projection -> Html Msg
 view projection =
-  let
-    (w, h) =
-      projection.size
-
-    a =
-      min w h
-
-    scale (x, y) =
-      (w / 2 + x * a / 2, h / 2 - y * a / 2)
-
-    r beta =
-      sin <| min beta (pi / 2)
-
-    z =
-      2 ^ projection.zoom.value
-
-    transformTheta theta =
-      let
-        beta =
-          theta / z
-
-        beta0 =
-          pi / z
-      in
-      0.5 * z * r beta / r beta0
-
-    transform (phi, theta) =
-      fromPolar
-        (transformTheta theta)
-        phi
-
-    rotate (phi, theta) =
-      (phi + projection.angle.value, theta)
-
-    spherical (lng, lat) =
-      (degrees lng, pi / 2 - degrees lat)
-
-    project =
-      spherical
-        >> rotate
-        >> transform
-        >> scale
-
-    land : Ring -> Svg Msg
-    land ring =
-      polygon
-        [ points <| List.map project ring
-        , stroke <| Paint Color.black
-        , fill <| Paint colorLand
-        , InPx.strokeWidth 1
-        ]
-        []
-
-    water : Ring -> Svg Msg
-    water ring =
-      polygon
-        [ points <| List.map project ring
-        , stroke <| Paint Color.black
-        , fill <| Paint colorWater
-        , InPx.strokeWidth 1
-        ]
-        []
-
-    landWater : Polygon -> List (Svg Msg)
-    landWater pol =
-      List.concat
-        [ [ land pol.exterior ]
-        , List.map water pol.interiors
-        ]
-
-    waterWater : Polygon -> List (Svg Msg)
-    waterWater pol =
-      List.concat
-        [ [ water pol.exterior ]
-        , List.map water pol.interiors
-        ]
-
-    waterLand : Polygon -> List (Svg Msg)
-    waterLand pol =
-      List.concat
-        [ [ water pol.exterior ]
-        , List.map land pol.interiors
-        ]
-
-    river : Line -> Svg Msg
-    river line =
-      polyline
-        [ points <| List.map project line
-        , stroke <| Paint Color.black
-        , fill PaintNone
-        ]
-        []
-  in
   svg
     [ id "projection"
     , width <| percent 100
     , height <| percent 100
     ]
-    <| case projection.geodata of
-      Just geodata ->
-        List.concat
-          [ [ circle
-              [ InPx.cx <| w / 2
-              , InPx.cy <| h / 2
-              , InPx.r <| a / 2 * transformTheta pi
-              , fill <| Paint colorLand
-              ]
-              []
-            ]
-          , List.concatMap waterWater geodata.landAntarctica
-          , List.concatMap landWater geodata.landWithoutAntarctica
-          , List.map river geodata.rivers
-          , List.concatMap waterLand geodata.lakes
-          , [ rect
+    <| List.append
+      [ rect
+        [ x <| percent 0
+        , y <| percent 0
+        , width <| percent 100
+        , height <| percent 100
+        , fill <| Paint colorBackground
+        ]
+        []
+      ]
+      <| case projection.geodata of
+        Just geodata ->
+          let
+            (w, h) =
+              projection.size
+
+            a =
+              min w h
+
+            scale (x, y) =
+              (w / 2 + x * a / 2, h / 2 - y * a / 2)
+
+            r beta =
+              sin <| min beta (pi / 2)
+
+            z =
+              2 ^ projection.zoom.value
+
+            transformTheta theta =
+              let
+                beta =
+                  theta / z
+
+                beta0 =
+                  pi / z
+              in
+              0.5 * z * r beta / r beta0
+
+            transform (phi, theta) =
+              fromPolar
+                (transformTheta theta)
+                phi
+
+            rotate (phi, theta) =
+              (phi + projection.angle.value, theta)
+
+            spherical (lng, lat) =
+              (degrees lng, pi / 2 - degrees lat)
+
+            project =
+              spherical
+                >> rotate
+                >> transform
+                >> scale
+
+            land : Ring -> Svg Msg
+            land ring =
+              polygon
+                [ points <| List.map project ring
+                , stroke <| Paint Color.black
+                , fill <| Paint colorLand
+                , InPx.strokeWidth 1
+                ]
+                []
+
+            water : Ring -> Svg Msg
+            water ring =
+              polygon
+                [ points <| List.map project ring
+                , stroke <| Paint Color.black
+                , fill <| Paint colorWater
+                , InPx.strokeWidth 1
+                ]
+                []
+
+            landWater : Polygon -> List (Svg Msg)
+            landWater pol =
+              List.concat
+                [ [ land pol.exterior ]
+                , List.map water pol.interiors
+                ]
+
+            waterWater : Polygon -> List (Svg Msg)
+            waterWater pol =
+              List.concat
+                [ [ water pol.exterior ]
+                , List.map water pol.interiors
+                ]
+
+            waterLand : Polygon -> List (Svg Msg)
+            waterLand pol =
+              List.concat
+                [ [ water pol.exterior ]
+                , List.map land pol.interiors
+                ]
+
+            river : Line -> Svg Msg
+            river line =
+              polyline
+                [ points <| List.map project line
+                , stroke <| Paint Color.black
+                , fill PaintNone
+                ]
+                []
+
+            earthCircle : Svg Msg
+            earthCircle =
+              circle
+                [ InPx.cx <| w / 2
+                , InPx.cy <| h / 2
+                , InPx.r <| a / 2 * transformTheta pi
+                , fill <| Paint colorLand
+                ]
+                []
+
+            shade : Svg Msg
+            shade = rect
               [ InPx.x 0
               , InPx.y 0
               , InPx.width w
               , InPx.height h
-              , fill <| Paint <| Color.rgba 1 1 1 (1 - projection.load.value)
+              , fill <| Paint <| withAlpha (1 - projection.load.value) colorBackground
               ]
               []
-            ]
-          ]
 
-      Nothing ->
-        []
+          in
+          List.concat
+            [ [ earthCircle ]
+            , List.concatMap waterWater geodata.landAntarctica
+            , List.concatMap landWater geodata.landWithoutAntarctica
+            , List.map river geodata.rivers
+            , List.concatMap waterLand geodata.lakes
+            , [ shade ]
+            ]
+
+        Nothing ->
+          []
 
 
 fromPolar : Float -> Float -> Point
@@ -238,11 +254,25 @@ fromPolar rho phi =
   (rho * cos phi, rho * sin phi)
 
 
+withAlpha : Float -> Color -> Color
+withAlpha alpha color =
+  let
+    rgba =
+      Color.toRgba color
+  in
+  Color.rgba rgba.red rgba.green rgba.blue alpha
+
+
+colorBackground : Color
+colorBackground =
+  Color.rgb 0 0 0
+
+
 colorLand : Color
 colorLand =
-  rgb255 0 165 84
+  Color.rgb255 0 165 84
 
 
 colorWater : Color
 colorWater =
-  rgb255 46 122 197
+  Color.rgb255 46 122 197

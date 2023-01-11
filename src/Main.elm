@@ -1,7 +1,8 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (centerX, centerY, el, fill, height, layout, width)
+import Element exposing (Color, centerX, centerY, el, fill, height, layout, rgb255, toRgb, width)
+import Element.Background as Background
 import GeoJson
 import Geodata exposing (Geodata, Msg(..))
 import Html exposing (Html)
@@ -18,6 +19,11 @@ config =
     , lakes = "ne_110m_lakes"
     }
   }
+
+
+geodataResource : String -> String
+geodataResource name =
+  config.prefix ++ "/geodata/" ++ name ++ ".min.geo.json"
 
 
 main : Program () Model Msg
@@ -66,7 +72,7 @@ init _ =
       ]
 
     (projection, cmd) =
-      Projection.init
+      Projection.init <| toRgb colorBackground
   in
   ( { geodata = Geodata.init
     , projection = projection
@@ -78,11 +84,6 @@ init _ =
     , Cmd.map ProjectionMsg cmd
     ]
   )
-
-
-geodataResource : String -> String
-geodataResource name =
-  config.prefix ++ "/geodata/" ++ name ++ ".min.geo.json"
 
 
 subscriptions : Model -> Sub Msg
@@ -112,7 +113,9 @@ update msg model =
             ( modelNew, Cmd.none )
 
         Err error ->
-          ( { model | error = Just error }
+          ( { model
+            | error = Just error
+            }
           , Cmd.none
           )
 
@@ -121,9 +124,16 @@ update msg model =
         (projection, cmd) =
           Projection.update projectionMsg model.projection
       in
-      ( { model | projection = projection }
+      ( { model
+        | projection = projection
+        }
       , Cmd.map ProjectionMsg cmd
       )
+
+
+colorBackground : Color
+colorBackground =
+  rgb255 36 36 36
 
 
 view : Model -> Html Msg
@@ -131,6 +141,7 @@ view model =
   layout
     [ width fill
     , height fill
+    , Background.color colorBackground
     ]
     <| el
       [ centerX

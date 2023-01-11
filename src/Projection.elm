@@ -4,7 +4,7 @@ module Projection exposing (..)
 import Animation exposing (Animation)
 import Browser.Dom
 import Browser.Events
-import Color exposing (Color, rgb255)
+import Color exposing (Color)
 import Geodata exposing (Geodata)
 import Html exposing (Html)
 import Math exposing (Line, Point, Polygon, Ring)
@@ -16,8 +16,17 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), percent)
 
 
+type alias RGBA =
+  { red : Float
+  , green : Float
+  , blue : Float
+  , alpha : Float
+  }
+
+
 type alias Projection =
   { size : Size
+  , colorBackground : Color
   , geodata : Maybe Geodata
   , angle : Animation
   , load : Animation
@@ -25,13 +34,14 @@ type alias Projection =
   }
 
 
-init : (Projection, Cmd Msg)
-init =
+init : RGBA -> (Projection, Cmd Msg)
+init colorBackground =
   ( { size = (0, 0)
+    , colorBackground = Color.fromRgba colorBackground
     , geodata = Nothing
-    , angle = Animation.init Animation.harmonic 500 <| -pi / 2
-    , load = Animation.init Animation.harmonic 500 0
-    , zoom = Animation.init Animation.harmonic 500 0
+    , angle = Animation.init Animation.harmonic 1000 <| -pi / 2
+    , load = Animation.init Animation.harmonic 1000 0
+    , zoom = Animation.init Animation.harmonic 1000 0
     }
   , getElement
   )
@@ -111,14 +121,7 @@ view projection =
     , height <| percent 100
     ]
     <| List.append
-      [ rect
-        [ x <| percent 0
-        , y <| percent 0
-        , width <| percent 100
-        , height <| percent 100
-        , fill <| Paint colorBackground
-        ]
-        []
+      [
       ]
       <| case projection.geodata of
         Just geodata ->
@@ -165,11 +168,20 @@ view projection =
                 >> transform
                 >> scale
 
+            colorLand =
+              Color.rgb255 0 165 84
+
+            colorWater =
+              Color.rgb255 46 122 197
+
+            colorContour =
+              Color.rgb255 0 0 0
+
             land : Ring -> Svg Msg
             land ring =
               polygon
                 [ points <| List.map project ring
-                , stroke <| Paint Color.black
+                , stroke <| Paint colorContour
                 , fill <| Paint colorLand
                 , InPx.strokeWidth 1
                 ]
@@ -179,7 +191,7 @@ view projection =
             water ring =
               polygon
                 [ points <| List.map project ring
-                , stroke <| Paint Color.black
+                , stroke <| Paint colorContour
                 , fill <| Paint colorWater
                 , InPx.strokeWidth 1
                 ]
@@ -210,18 +222,23 @@ view projection =
             river line =
               polyline
                 [ points <| List.map project line
-                , stroke <| Paint Color.black
+                , stroke <| Paint colorContour
                 , fill PaintNone
                 ]
                 []
 
-            earthCircle : Svg Msg
-            earthCircle =
+            earthCircle : Maybe Color -> Maybe Color -> Svg Msg
+            earthCircle strokeColor fillColor =
               circle
                 [ InPx.cx <| w / 2
                 , InPx.cy <| h / 2
                 , InPx.r <| a / 2 * transformTheta pi
-                , fill <| Paint colorLand
+                , stroke
+                  <| Maybe.withDefault PaintNone
+                  <| Maybe.map Paint strokeColor
+                , fill
+                  <| Maybe.withDefault PaintNone
+                  <| Maybe.map Paint fillColor
                 ]
                 []
 
@@ -231,18 +248,20 @@ view projection =
               , InPx.y 0
               , InPx.width w
               , InPx.height h
-              , fill <| Paint <| withAlpha (1 - projection.load.value) colorBackground
+              , fill <| Paint <| withAlpha (1 - projection.load.value) projection.colorBackground
               ]
               []
-
           in
           List.concat
-            [ [ earthCircle ]
+            [ [ earthCircle Nothing (Just colorLand)
+              ]
             , List.concatMap waterWater geodata.landAntarctica
             , List.concatMap landWater geodata.landWithoutAntarctica
             , List.map river geodata.rivers
             , List.concatMap waterLand geodata.lakes
-            , [ shade ]
+            , [ earthCircle (Just colorContour) Nothing
+              , shade
+              ]
             ]
 
         Nothing ->
@@ -263,16 +282,6 @@ withAlpha alpha color =
   Color.rgba rgba.red rgba.green rgba.blue alpha
 
 
-colorBackground : Color
-colorBackground =
-  Color.rgb 0 0 0
-
-
-colorLand : Color
-colorLand =
-  Color.rgb255 0 165 84
-
-
-colorWater : Color
-colorWater =
-  Color.rgb255 46 122 197
+colorTransparent : Color
+colorTransparent =
+  Color.rgba 0 0 0 0

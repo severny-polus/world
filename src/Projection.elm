@@ -29,7 +29,7 @@ type alias Projection =
   , colorBackground : Color
   , geodata : Maybe Geodata
   , angle : Animation
-  , load : Animation
+  , shade : Animation
   , zoom : Animation
   }
 
@@ -39,9 +39,12 @@ init colorBackground =
   ( { size = (0, 0)
     , colorBackground = Color.fromRgba colorBackground
     , geodata = Nothing
-    , angle = Animation.init Animation.harmonic 1000 <| -pi / 2
-    , load = Animation.init Animation.harmonic 1000 0
+    , angle = Animation.init Animation.harmonic 1000 (-pi / 2)
+      |> Animation.to (-pi / 2 - degrees 38)
+    , shade = Animation.init Animation.harmonic 1000 1
+      |> Animation.to 0
     , zoom = Animation.init Animation.harmonic 1000 0
+      |> Animation.to 1
     }
   , getElement
   )
@@ -90,18 +93,18 @@ update msg projection =
     SetGeodata geodata ->
       ( { projection
         | geodata = Just geodata
-        , angle = Animation.to (-pi / 2 - degrees 38) projection.angle
-        , load = Animation.to 1 projection.load
-        , zoom = Animation.to 1 projection.zoom
+        , angle = Animation.run projection.angle
+        , shade = Animation.run projection.shade
+        , zoom = Animation.run projection.zoom
         }
       , Cmd.none
       )
 
     TimeDelta dt ->
       ( { projection
-        | angle = Animation.move dt projection.angle
-        , load = Animation.move dt projection.load
-        , zoom = Animation.move dt projection.zoom
+        | angle = Animation.step dt projection.angle
+        , shade = Animation.step dt projection.shade
+        , zoom = Animation.step dt projection.zoom
         }
       , Cmd.none
       )
@@ -248,7 +251,9 @@ view projection =
               , InPx.y 0
               , InPx.width w
               , InPx.height h
-              , fill <| Paint <| withAlpha (1 - projection.load.value) projection.colorBackground
+              , fill
+                <| Paint
+                <| withAlpha projection.shade.value projection.colorBackground
               ]
               []
           in

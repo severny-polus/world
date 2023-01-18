@@ -8,6 +8,7 @@ type alias Animation =
   , value : Float
   , start : Float
   , stop : Float
+  , running : Bool
   , velocity : Float
   , initialVelocity : Float
   }
@@ -25,6 +26,7 @@ init curve duration value =
   , value = value
   , start = value
   , stop = value
+  , running = False
   , velocity = 0
   , initialVelocity = 0
   }
@@ -40,9 +42,17 @@ to stop animation =
   }
 
 
-move : Float -> Animation -> Animation
-move dt animation =
-  if animation.start == animation.stop then
+run : Animation -> Animation
+run animation =
+  { animation
+  | time = 0
+  , running = True
+  }
+
+
+step : Float -> Animation -> Animation
+step dt animation =
+  if not animation.running || animation.start == animation.stop then
     animation
 
   else
@@ -70,7 +80,6 @@ move dt animation =
       { animation
       | time = t
       , value = animation.stop
-      , start = animation.stop
       , velocity = 0
       , initialVelocity = 0
       }

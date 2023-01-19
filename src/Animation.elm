@@ -32,6 +32,11 @@ init curve duration value =
   }
 
 
+withDuration : Float -> Animation -> Animation
+withDuration duration animation =
+  { animation | duration = duration }
+
+
 to : Float -> Animation -> Animation
 to stop animation =
   { animation

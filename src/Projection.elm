@@ -7,13 +7,16 @@ import Browser.Events
 import Color exposing (Color)
 import Geodata exposing (Geodata)
 import Html exposing (Html)
+import Json.Decode
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
 import TypedSvg.Attributes exposing (fill, height, id, points, stroke, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
+import TypedSvg.Events exposing (on, onMouseUp)
 import TypedSvg.Types exposing (Paint(..), percent)
+import VirtualDom
 
 
 type alias RGBA =
@@ -25,12 +28,13 @@ type alias RGBA =
 
 
 type alias Projection =
-  { size : Size
+  { size : Point
   , colorBackground : Color
   , geodata : Maybe Geodata
   , angle : Animation
   , shade : Animation
   , zoom : Animation
+  , startAngle : Maybe Float
   }
 
 
@@ -39,18 +43,19 @@ init colorBackground =
   ( { size = (0, 0)
     , colorBackground = Color.fromRgba colorBackground
     , geodata = Nothing
-    , angle = Animation.init Animation.harmonic 1000 (-pi / 2)
-      |> Animation.to (-pi / 2 - degrees 38)
+    , angle = Animation.init Animation.harmonic 1000 (3 * pi / 2)
+      |> Animation.to (3 * pi / 2 - degrees 38)
     , shade = Animation.init Animation.harmonic 1000 1
       |> Animation.to 0
     , zoom = Animation.init Animation.harmonic 1000 0
       |> Animation.to 1
+    , startAngle = Nothing
     }
   , getElement
   )
 
 
-type alias Size =
+type alias Point =
   (Float, Float)
 
 
@@ -59,6 +64,9 @@ type Msg
   | Element (Maybe Browser.Dom.Element)
   | SetGeodata Geodata
   | TimeDelta Float
+  | HoldAngle Point
+  | MoveAngle Point
+  | ReleaseAngle
 
 
 subscriptions : Projection -> Sub Msg
@@ -67,6 +75,11 @@ subscriptions _ =
     [ Browser.Events.onResize Resize
     , Browser.Events.onAnimationFrameDelta TimeDelta
     ]
+
+
+getAngle : Point -> Point -> Float
+getAngle ( x, y ) ( w, h ) =
+  atan2 (x - w / 2) (y - h / 2)
 
 
 update : Msg -> Projection -> (Projection, Cmd Msg)
@@ -109,11 +122,60 @@ update msg projection =
       , Cmd.none
       )
 
+    HoldAngle point ->
+      ( { projection | startAngle = Just <| getAngle point projection.size }
+      , Cmd.none
+      )
+
+    MoveAngle point ->
+      ( case projection.startAngle of
+        Just downAngle ->
+          let
+            stopAngle =
+              getAngle point projection.size
+
+            angleDelta =
+              stopAngle - downAngle
+
+            normalize ad =
+              if ad < -pi then
+                normalize <| ad + 2 * pi
+              else if ad > pi then
+                normalize <| ad - 2 * pi
+              else
+                ad
+          in
+          { projection
+          | angle =
+            projection.angle
+              |> Animation.withDuration 200
+              |> Animation.to (projection.angle.stop + normalize angleDelta)
+          , startAngle = Just stopAngle
+          }
+
+        Nothing ->
+          projection
+
+      , Cmd.none
+      )
+
+    ReleaseAngle ->
+      ( { projection | startAngle = Nothing }
+      , Cmd.none
+      )
+
 
 getElement : Cmd Msg
 getElement =
   Browser.Dom.getElement "projection"
     |> Task.attempt (Result.toMaybe >> Element)
+
+
+mousePosition : Json.Decode.Decoder Point
+mousePosition =
+  Json.Decode.map2 Tuple.pair
+    (Json.Decode.field "offsetX" Json.Decode.float)
+    (Json.Decode.field "offsetY" Json.Decode.float)
 
 
 view : Projection -> Html Msg
@@ -122,160 +184,166 @@ view projection =
     [ id "projection"
     , width <| percent 100
     , height <| percent 100
+    , on "mousedown"
+      <| VirtualDom.Normal
+      <| Json.Decode.map HoldAngle
+      <| mousePosition
+    , on "mousemove"
+      <| VirtualDom.Normal
+      <| Json.Decode.map MoveAngle
+      <| mousePosition
+    , onMouseUp ReleaseAngle
     ]
-    <| List.append
-      [
-      ]
-      <| case projection.geodata of
-        Just geodata ->
-          let
-            (w, h) =
-              projection.size
+    <| case projection.geodata of
+      Just geodata ->
+        let
+          ( w, h ) =
+            projection.size
 
-            a =
-              min w h
+          a =
+            min w h
 
-            scale (x, y) =
-              (w / 2 + x * a / 2, h / 2 - y * a / 2)
+          scale ( x, y ) =
+            ( w / 2 + x * a / 2, h / 2 - y * a / 2 )
 
-            r beta =
-              sin <| min beta (pi / 2)
+          r beta =
+            sin <| min beta (pi / 2)
 
-            z =
-              2 ^ projection.zoom.value
+          z =
+            2 ^ projection.zoom.value
 
-            transformTheta theta =
-              let
-                beta =
-                  theta / z
+          transformTheta theta =
+            let
+              beta =
+                theta / z
 
-                beta0 =
-                  pi / z
-              in
-              0.5 * z * r beta / r beta0
+              beta0 =
+                pi / z
+            in
+            0.5 * z * r beta / r beta0
 
-            transform (phi, theta) =
-              fromPolar
-                (transformTheta theta)
-                phi
+          transform ( phi, theta ) =
+            fromPolar
+              (transformTheta theta)
+              phi
 
-            rotate (phi, theta) =
-              (phi + projection.angle.value, theta)
+          rotate ( phi, theta ) =
+            ( projection.angle.value + phi, theta )
 
-            spherical (lng, lat) =
-              (degrees lng, pi / 2 - degrees lat)
+          spherical ( lng, lat ) =
+            ( degrees lng, pi / 2 - degrees lat )
 
-            project =
-              spherical
-                >> rotate
-                >> transform
-                >> scale
+          project =
+            spherical
+              >> rotate
+              >> transform
+              >> scale
 
-            colorLand =
-              Color.rgb255 0 165 84
+          colorLand =
+            Color.rgb255 0 165 84
 
-            colorWater =
-              Color.rgb255 46 122 197
+          colorWater =
+            Color.rgb255 46 122 197
 
-            colorContour =
-              Color.rgb255 0 0 0
+          colorContour =
+            Color.rgb255 0 0 0
 
-            land : Ring -> Svg Msg
-            land ring =
-              polygon
-                [ points <| List.map project ring
-                , stroke <| Paint colorContour
-                , fill <| Paint colorLand
-                , InPx.strokeWidth 1
-                ]
-                []
-
-            water : Ring -> Svg Msg
-            water ring =
-              polygon
-                [ points <| List.map project ring
-                , stroke <| Paint colorContour
-                , fill <| Paint colorWater
-                , InPx.strokeWidth 1
-                ]
-                []
-
-            landWater : Polygon -> List (Svg Msg)
-            landWater pol =
-              List.concat
-                [ [ land pol.exterior ]
-                , List.map water pol.interiors
-                ]
-
-            waterWater : Polygon -> List (Svg Msg)
-            waterWater pol =
-              List.concat
-                [ [ water pol.exterior ]
-                , List.map water pol.interiors
-                ]
-
-            waterLand : Polygon -> List (Svg Msg)
-            waterLand pol =
-              List.concat
-                [ [ water pol.exterior ]
-                , List.map land pol.interiors
-                ]
-
-            river : Line -> Svg Msg
-            river line =
-              polyline
-                [ points <| List.map project line
-                , stroke <| Paint colorContour
-                , fill PaintNone
-                ]
-                []
-
-            earthCircle : Maybe Color -> Maybe Color -> Svg Msg
-            earthCircle strokeColor fillColor =
-              circle
-                [ InPx.cx <| w / 2
-                , InPx.cy <| h / 2
-                , InPx.r <| a / 2 * transformTheta pi
-                , stroke
-                  <| Maybe.withDefault PaintNone
-                  <| Maybe.map Paint strokeColor
-                , fill
-                  <| Maybe.withDefault PaintNone
-                  <| Maybe.map Paint fillColor
-                ]
-                []
-
-            shade : Svg Msg
-            shade = rect
-              [ InPx.x 0
-              , InPx.y 0
-              , InPx.width w
-              , InPx.height h
-              , fill
-                <| Paint
-                <| withAlpha projection.shade.value projection.colorBackground
+          land : Ring -> Svg Msg
+          land ring =
+            polygon
+              [ points <| List.map project ring
+              , stroke <| Paint colorContour
+              , fill <| Paint colorLand
+              , InPx.strokeWidth 1
               ]
               []
-          in
-          List.concat
-            [ [ earthCircle Nothing (Just colorLand)
-              ]
-            , List.concatMap waterWater geodata.landAntarctica
-            , List.concatMap landWater geodata.landWithoutAntarctica
-            , List.map river geodata.rivers
-            , List.concatMap waterLand geodata.lakes
-            , [ earthCircle (Just colorContour) Nothing
-              , shade
-              ]
-            ]
 
-        Nothing ->
-          []
+          water : Ring -> Svg Msg
+          water ring =
+            polygon
+              [ points <| List.map project ring
+              , stroke <| Paint colorContour
+              , fill <| Paint colorWater
+              , InPx.strokeWidth 1
+              ]
+              []
+
+          landWater : Polygon -> List (Svg Msg)
+          landWater pol =
+            List.concat
+              [ [ land pol.exterior ]
+              , List.map water pol.interiors
+              ]
+
+          waterWater : Polygon -> List (Svg Msg)
+          waterWater pol =
+            List.concat
+              [ [ water pol.exterior ]
+              , List.map water pol.interiors
+              ]
+
+          waterLand : Polygon -> List (Svg Msg)
+          waterLand pol =
+            List.concat
+              [ [ water pol.exterior ]
+              , List.map land pol.interiors
+              ]
+
+          river : Line -> Svg Msg
+          river line =
+            polyline
+              [ points <| List.map project line
+              , stroke <| Paint colorContour
+              , fill PaintNone
+              ]
+              []
+
+          earthCircle : Maybe Color -> Maybe Color -> Svg Msg
+          earthCircle strokeColor fillColor =
+            circle
+              [ InPx.cx <| w / 2
+              , InPx.cy <| h / 2
+              , InPx.r <| a / 2 * transformTheta pi
+              , stroke
+                <| Maybe.withDefault PaintNone
+                <| Maybe.map Paint strokeColor
+              , fill
+                <| Maybe.withDefault PaintNone
+                <| Maybe.map Paint fillColor
+              ]
+              []
+
+          shade : Svg Msg
+          shade = rect
+            [ InPx.x 0
+            , InPx.y 0
+            , InPx.width w
+            , InPx.height h
+            , fill
+              <| Paint
+              <| withAlpha projection.shade.value projection.colorBackground
+            ]
+            []
+        in
+        List.concat
+          [ [ earthCircle Nothing (Just colorLand)
+            ]
+          , List.concatMap waterWater geodata.landAntarctica
+          , List.concatMap landWater geodata.landWithoutAntarctica
+          , List.map river geodata.rivers
+          , List.concatMap waterLand geodata.lakes
+          , [ earthCircle (Just colorContour) Nothing
+            , shade
+            ]
+          ]
+
+      Nothing ->
+        []
 
 
 fromPolar : Float -> Float -> Point
 fromPolar rho phi =
-  (rho * cos phi, rho * sin phi)
+  ( rho * cos phi, rho * sin phi )
 
 
 withAlpha : Float -> Color -> Color

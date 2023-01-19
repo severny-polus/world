@@ -311,7 +311,7 @@ view projection =
             circle
               [ InPx.cx x
               , InPx.cy y
-              , InPx.r 2
+              , InPx.r 0.5
               , stroke PaintNone
               , fill <| Paint colorCity
               ]

@@ -143,12 +143,6 @@ view model =
     , height fill
     , Background.color colorBackground
     ]
-    <| el
-      [ centerX
-      , centerY
-      , width fill
-      , height fill
-      ]
-      <| Element.html
-      <| Html.map ProjectionMsg
-      <| Projection.view model.projection
+    <| Element.html
+    <| Html.map ProjectionMsg
+    <| Projection.view model.projection

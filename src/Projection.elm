@@ -11,11 +11,11 @@ import Json.Decode
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
-import TypedSvg.Attributes exposing (fill, height, id, points, stroke, width, x, y)
+import TypedSvg.Attributes exposing (fill, height, id, points, stroke, strokeWidth, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Events exposing (on, onMouseUp)
-import TypedSvg.Types exposing (Paint(..), percent)
+import TypedSvg.Types exposing (Paint(..), percent, px)
 import VirtualDom
 
 
@@ -72,8 +72,8 @@ type Msg
 subscriptions : Projection -> Sub Msg
 subscriptions _ =
   Sub.batch
-    [ Browser.Events.onResize Resize
-    , Browser.Events.onAnimationFrameDelta TimeDelta
+    [ Browser.Events.onAnimationFrameDelta TimeDelta
+    , Browser.Events.onResize Resize
     ]
 
 
@@ -100,6 +100,7 @@ update msg projection =
 
         Nothing ->
           projection
+
       , Cmd.none
       )
 
@@ -254,7 +255,7 @@ view projection =
               [ points <| List.map project ring
               , stroke <| Paint colorContour
               , fill <| Paint colorLand
-              , InPx.strokeWidth 1
+              , strokeWidth <| px 1
               ]
               []
 
@@ -264,7 +265,7 @@ view projection =
               [ points <| List.map project ring
               , stroke <| Paint colorContour
               , fill <| Paint colorWater
-              , InPx.strokeWidth 1
+              , strokeWidth <| px 1
               ]
               []
 

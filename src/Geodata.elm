@@ -1,7 +1,7 @@
 module Geodata exposing (..)
 
 
-import Math exposing (Line, Polygon)
+import Math exposing (Line, Point, Polygon)
 
 
 type alias Geodata =
@@ -9,6 +9,7 @@ type alias Geodata =
   , landAntarctica : List Polygon
   , lakes : List Polygon
   , rivers : List Line
+  , cities : List Point
   }
 
 
@@ -17,6 +18,7 @@ type Msg
   | LandAntarctica (List Polygon)
   | Lakes (List Polygon)
   | Rivers (List Line)
+  | Cities (List Point)
 
 
 init : Geodata
@@ -25,6 +27,7 @@ init =
   , landAntarctica = []
   , rivers = []
   , lakes = []
+  , cities = []
   }
 
 
@@ -42,3 +45,6 @@ update msg geodata =
 
     Rivers lines ->
       { geodata | rivers = lines }
+
+    Cities cities ->
+      { geodata | cities = cities }

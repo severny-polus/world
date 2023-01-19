@@ -15,11 +15,12 @@ elm.min.js: elm.js
 elm.js_unoptimized: $(wildcard src/*)
 	elm make src/Main.elm --output=elm.min.js
 
-minify: $(geodata)
-
-geodata = $($(wildcard geodata/*.geo.json):.min.geo.json=.geo.json)
+geodata-raw = $(filter-out $(wildcard geodata/*.min.geo.json),$(wildcard geodata/*.geo.json))
+geodata = $(geodata-raw:.geo.json=.min.geo.json)
 
 $(geodata): %.min.geo.json: %.geo.json
+
+minify: $(geodata)
 
 %.min.geo.json:
 	jq -c . < $^ > $@

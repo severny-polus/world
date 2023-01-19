@@ -22,6 +22,9 @@ config =
     , { name = "ne_110m_lakes"
       , decoder = Json.Decode.map Lakes GeoJson.polygons
       }
+    , { name = "ne_110m_populated_places_simple"
+      , decoder = Json.Decode.map Cities GeoJson.points
+      }
     ]
   }
 

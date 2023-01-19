@@ -249,6 +249,9 @@ view projection =
           colorContour =
             Color.rgb255 0 0 0
 
+          colorCity =
+            Color.rgb255 254 203 0
+
           land : Ring -> Svg Msg
           land ring =
             polygon
@@ -299,6 +302,21 @@ view projection =
               ]
               []
 
+          city : Point -> Svg Msg
+          city point =
+            let
+              ( x, y ) =
+                project point
+            in
+            circle
+              [ InPx.cx x
+              , InPx.cy y
+              , InPx.r 2
+              , stroke PaintNone
+              , fill <| Paint colorCity
+              ]
+              []
+
           earthCircle : Maybe Color -> Maybe Color -> Svg Msg
           earthCircle strokeColor fillColor =
             circle
@@ -333,6 +351,7 @@ view projection =
           , List.concatMap landWater geodata.landWithoutAntarctica
           , List.map river geodata.rivers
           , List.concatMap waterLand geodata.lakes
+          , List.map city geodata.cities
           , [ earthCircle (Just colorContour) Nothing
             , shade
             ]

@@ -13,7 +13,7 @@ polygons =
     <| Json.field "geometry"
     <| Json.field "coordinates"
     <| Json.list
-    <| points
+    <| manyPoints
 
 
 lines : Json.Decoder (List Line)
@@ -22,11 +22,22 @@ lines =
     <| Json.list
     <| Json.field "geometry"
     <| Json.field "coordinates"
-    <| points
+    <| manyPoints
 
 
 points : Json.Decoder (List Point)
 points =
+  Json.field "features"
+    <| Json.map (List.filterMap toPoint)
+    <| Json.list
+    <| Json.field "geometry"
+    <| Json.field "coordinates"
+    <| Json.list
+    <| Json.float
+
+
+manyPoints : Json.Decoder (List Point)
+manyPoints =
   Json.map (List.filterMap toPoint)
     <| Json.list
     <| Json.list
@@ -43,8 +54,8 @@ toPolygon polygon =
 toPoint : List Float -> Maybe Point
 toPoint floats =
   case floats of
-    [x, y] ->
-      Just (x, y)
+    [ x, y ] ->
+      Just ( x, y )
 
     _ ->
       Nothing

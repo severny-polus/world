@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Config exposing (Config)
 import Element exposing (Color, centerX, centerY, el, fill, height, layout, rgb255, toRgb, width)
 import Element.Background as Background
 import GeoJson
@@ -10,20 +11,9 @@ import Http
 import Projection exposing (Projection)
 
 
+config : Config
 config =
-  { prefix = "https://raw.githubusercontent.com/severny-polus/world/master"
-  , geodata =
-    { landAntarctica = "ne_110m_land_antarctica"
-    , landWithoutAntarctica = "ne_110m_land_no_antarctica"
-    , rivers = "ne_110m_rivers_lake_centerlines"
-    , lakes = "ne_110m_lakes"
-    }
-  }
-
-
-geodataResource : String -> String
-geodataResource name =
-  config.prefix ++ "/geodata/" ++ name ++ ".min.geo.json"
+  Config.config
 
 
 main : Program () Model Msg
@@ -52,24 +42,13 @@ type Msg
 init : () -> (Model, Cmd Msg)
 init _ =
   let
+    getGeodata { name, decoder } =
+      { url = config.prefix ++ "/geodata/" ++ name ++ ".min.geo.json"
+      , expect = Http.expectJson GeodataResult decoder
+      }
+
     requests =
-      [ Http.get
-        { url = geodataResource config.geodata.landWithoutAntarctica
-        , expect = Http.expectJson (Result.map LandWithoutAntarctica) GeoJson.polygons
-        }
-      , Http.get
-        { url = geodataResource config.geodata.landAntarctica
-        , expect = Http.expectJson (Result.map LandAntarctica) GeoJson.polygons
-        }
-      , Http.get
-        { url = geodataResource config.geodata.lakes
-        , expect = Http.expectJson (Result.map Lakes) GeoJson.polygons
-        }
-      , Http.get
-        { url = geodataResource config.geodata.rivers
-        , expect = Http.expectJson (Result.map Rivers) GeoJson.lines
-        }
-      ]
+      List.map (Http.get << getGeodata) config.geodata
 
     (projection, cmd) =
       Projection.init <| toRgb colorBackground
@@ -80,7 +59,7 @@ init _ =
     , error = Nothing
     }
   , Cmd.batch
-    [ Cmd.map GeodataResult <| Cmd.batch requests
+    [ Cmd.batch requests
     , Cmd.map ProjectionMsg cmd
     ]
   )

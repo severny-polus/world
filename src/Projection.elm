@@ -11,7 +11,7 @@ import Json.Decode
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
-import TypedSvg.Attributes exposing (fill, height, id, points, stroke, strokeWidth, width, x, y)
+import TypedSvg.Attributes exposing (fill, height, id, points, stroke, strokeWidth, style, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Events exposing (on, onMouseUp)
@@ -35,6 +35,7 @@ type alias Projection =
   , shade : Animation
   , zoom : Animation
   , startAngle : Maybe Float
+  , cursor : Cursor
   }
 
 
@@ -50,6 +51,7 @@ init colorBackground =
     , zoom = Animation.init Animation.harmonic 1000 0
       |> Animation.to 1
     , startAngle = Nothing
+    , cursor = Grab
     }
   , getElement
   )
@@ -67,6 +69,23 @@ type Msg
   | HoldAngle Point
   | MoveAngle Point
   | ReleaseAngle
+
+
+type Cursor
+  = Grab
+  | Grabbing
+
+
+cursorStyle : Cursor -> String
+cursorStyle cursor =
+  String.concat
+    [ "cursor: "
+    , ( case cursor of
+        Grab -> "grab"
+        Grabbing -> "grabbing"
+      )
+    , ";"
+    ]
 
 
 subscriptions : Projection -> Sub Msg
@@ -124,7 +143,10 @@ update msg projection =
       )
 
     HoldAngle point ->
-      ( { projection | startAngle = Just <| getAngle point projection.size }
+      ( { projection
+        | startAngle = Just <| getAngle point projection.size
+        , cursor = Grabbing
+        }
       , Cmd.none
       )
 
@@ -161,7 +183,10 @@ update msg projection =
       )
 
     ReleaseAngle ->
-      ( { projection | startAngle = Nothing }
+      ( { projection
+        | startAngle = Nothing
+        , cursor = Grab
+        }
       , Cmd.none
       )
 
@@ -179,21 +204,32 @@ mousePosition =
     (Json.Decode.field "offsetY" Json.Decode.float)
 
 
+preventDefault : Json.Decode.Decoder Msg -> VirtualDom.Handler Msg
+preventDefault decoder =
+  VirtualDom.MayPreventDefault
+    <| Json.Decode.map2 Tuple.pair
+      decoder
+      (Json.Decode.succeed True)
+
+
 view : Projection -> Html Msg
 view projection =
   svg
     [ id "projection"
     , width <| percent 100
     , height <| percent 100
-    , on "mousedown"
-      <| VirtualDom.Normal
+    , style <| cursorStyle projection.cursor
+    , on "pointerdown"
+      <| preventDefault
       <| Json.Decode.map HoldAngle
       <| mousePosition
-    , on "mousemove"
-      <| VirtualDom.Normal
+    , on "pointermove"
+      <| preventDefault
       <| Json.Decode.map MoveAngle
       <| mousePosition
-    , onMouseUp ReleaseAngle
+    , on "pointerup"
+      <| preventDefault
+      <| Json.Decode.succeed ReleaseAngle
     ]
     <| case projection.geodata of
       Just geodata ->

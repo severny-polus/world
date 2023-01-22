@@ -14,7 +14,7 @@ import TypedSvg exposing (circle, polygon, polyline, rect, svg)
 import TypedSvg.Attributes exposing (fill, height, id, points, stroke, strokeWidth, style, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Events exposing (on, onMouseUp)
+import TypedSvg.Events exposing (on)
 import TypedSvg.Types exposing (Paint(..), percent, px)
 import VirtualDom
 

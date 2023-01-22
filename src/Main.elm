@@ -2,9 +2,8 @@ module Main exposing (main)
 
 import Browser
 import Config exposing (Config)
-import Element exposing (Color, centerX, centerY, el, fill, height, layout, rgb255, toRgb, width)
+import Element exposing (Color, fill, height, layout, rgb255, toRgb, width)
 import Element.Background as Background
-import GeoJson
 import Geodata exposing (Geodata, Msg(..))
 import Html exposing (Html)
 import Http

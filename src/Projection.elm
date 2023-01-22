@@ -36,6 +36,8 @@ type alias Projection =
   , zoom : Animation
   , startAngle : Maybe Float
   , cursor : Cursor
+  , shift : Bool
+  , ctrl : Bool
   }
 
 
@@ -44,14 +46,16 @@ init colorBackground =
   ( { size = (0, 0)
     , colorBackground = Color.fromRgba colorBackground
     , geodata = Nothing
-    , angle = Animation.init Animation.harmonic 1000 (3 * pi / 2)
+    , angle = Animation.init (Animation.parabolic 0.3) 1000 (3 * pi / 2)
       |> Animation.to (3 * pi / 2 - degrees 38)
-    , shade = Animation.init Animation.harmonic 1000 1
+    , shade = Animation.init (Animation.parabolic 0.3) 1000 1
       |> Animation.to 0
-    , zoom = Animation.init Animation.harmonic 1000 0
+    , zoom = Animation.init (Animation.parabolic 0.3) 1000 0
       |> Animation.to 1
     , startAngle = Nothing
     , cursor = Grab
+    , shift = False
+    , ctrl = False
     }
   , getElement
   )
@@ -69,6 +73,7 @@ type Msg
   | HoldAngle Point
   | MoveAngle Point
   | ReleaseAngle
+  | Wheel Float
 
 
 type Cursor
@@ -190,18 +195,22 @@ update msg projection =
       , Cmd.none
       )
 
+    Wheel dy ->
+      ( { projection
+        | zoom =
+          projection.zoom
+            |> Animation.withDuration 500
+            |> Animation.to
+              (max 0 (min 10 (projection.zoom.stop - 0.2 * dy / 53)))
+        }
+      , Cmd.none
+      )
+
 
 getElement : Cmd Msg
 getElement =
   Browser.Dom.getElement "projection"
     |> Task.attempt (Result.toMaybe >> Element)
-
-
-mousePosition : Json.Decode.Decoder Point
-mousePosition =
-  Json.Decode.map2 Tuple.pair
-    (Json.Decode.field "offsetX" Json.Decode.float)
-    (Json.Decode.field "offsetY" Json.Decode.float)
 
 
 preventDefault : Json.Decode.Decoder Msg -> VirtualDom.Handler Msg
@@ -210,6 +219,13 @@ preventDefault decoder =
     <| Json.Decode.map2 Tuple.pair
       decoder
       (Json.Decode.succeed True)
+
+
+mousePosition : Json.Decode.Decoder Point
+mousePosition =
+  Json.Decode.map2 Tuple.pair
+    (Json.Decode.field "offsetX" Json.Decode.float)
+    (Json.Decode.field "offsetY" Json.Decode.float)
 
 
 view : Projection -> Html Msg
@@ -230,6 +246,11 @@ view projection =
     , on "pointerup"
       <| preventDefault
       <| Json.Decode.succeed ReleaseAngle
+    , on "wheel"
+      <| preventDefault
+      <| Json.Decode.map Wheel
+      <| Json.Decode.field "deltaY"
+      <| Json.Decode.float
     ]
     <| case projection.geodata of
       Just geodata ->

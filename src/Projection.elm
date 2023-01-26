@@ -219,15 +219,15 @@ view projection =
     , width <| percent 100
     , height <| percent 100
     , style <| cursorStyle projection.cursor
-    , on "pointerdown"
+    , on "mousedown"
       <| preventDefault
       <| Json.Decode.map HoldAngle
       <| mousePosition
-    , on "pointermove"
+    , on "mousemove"
       <| preventDefault
       <| Json.Decode.map MoveAngle
       <| mousePosition
-    , on "pointerup"
+    , on "mouseup"
       <| preventDefault
       <| Json.Decode.succeed ReleaseAngle
     , on "wheel"

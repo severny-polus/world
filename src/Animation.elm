@@ -3,7 +3,7 @@ module Animation exposing (..)
 
 type alias Animation =
   { curve : Curve
-  , duration : Float
+  , period : Float
   , time : Float
   , value : Float
   , start : Float
@@ -14,14 +14,10 @@ type alias Animation =
   }
 
 
-type alias Curve =
-  Float -> Float -> Float -> Float -> Float
-
-
 init : Curve -> Float -> Float -> Animation
-init curve duration value =
+init curve period value =
   { curve = curve
-  , duration = duration
+  , period = period
   , time = 0
   , value = value
   , start = value
@@ -30,11 +26,6 @@ init curve duration value =
   , velocity = 0
   , initialVelocity = 0
   }
-
-
-withDuration : Float -> Animation -> Animation
-withDuration duration animation =
-  { animation | duration = duration }
 
 
 to : Float -> Animation -> Animation
@@ -57,7 +48,7 @@ run animation =
 
 step : Float -> Animation -> Animation
 step dt animation =
-  if not animation.running || animation.start == animation.stop then
+  if not animation.running || done animation then
     animation
 
   else
@@ -69,8 +60,8 @@ step dt animation =
         animation.stop - animation.start
 
       value =
-        animation.start + animation.curve
-          animation.duration
+        animation.start + curveFunction animation.curve
+          animation.period
           animation.initialVelocity
           jump
           t
@@ -81,12 +72,14 @@ step dt animation =
       velocityDelta =
         velocity - animation.velocity
     in
-    if velocity * jump <= 0
+    if (value - animation.stop) * jump >= 0
+      || velocity * jump <= 0
       && velocityDelta * jump <= 0
     then
       { animation
       | time = t
       , value = animation.stop
+      , start = animation.stop
       , velocity = 0
       , initialVelocity = 0
       }
@@ -99,7 +92,30 @@ step dt animation =
       }
 
 
-harmonic : Curve
+done : Animation -> Bool
+done animation =
+  animation.start == animation.stop
+
+
+type Curve
+  = Harmonic
+  | Parabolic Float
+  | Custom CurveFunction
+
+
+curveFunction : Curve -> CurveFunction
+curveFunction curve =
+  case curve of
+    Harmonic -> harmonic
+    Parabolic a -> parabolic a
+    Custom function -> function
+
+
+type alias CurveFunction =
+  Float -> Float -> Float -> Float -> Float
+
+
+harmonic : CurveFunction
 harmonic dur vel jump t =
   let
     phi =
@@ -108,7 +124,7 @@ harmonic dur vel jump t =
   jump * (cos phi - cos (phi + pi * t / dur)) / (cos phi + 1)
 
 
-parabolic : Float -> Curve
+parabolic : Float -> CurveFunction
 parabolic a dur vel jump t =
   let
     d = 2 * jump - (1 + a) * vel * dur
@@ -116,5 +132,5 @@ parabolic a dur vel jump t =
   if t < a * dur then
     vel * t + d / (2 * a) * (t / dur) ^ 2
   else
-    jump - (d + vel * dur) / (2 * (1 - a)) * ((dur - t) / dur) ^ 2
+    jump - (d + vel * dur) / (2 * (1 - a)) * (1 - t / dur) ^ 2
 

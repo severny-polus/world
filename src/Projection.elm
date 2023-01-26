@@ -10,6 +10,7 @@ import Html exposing (Html)
 import Json.Decode
 import Math exposing (Line, Point, Polygon, Ring)
 import Task
+import Time
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
 import TypedSvg.Attributes exposing (fill, height, id, points, stroke, strokeWidth, style, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
@@ -32,8 +33,8 @@ type alias Projection =
   , colorBackground : Color
   , geodata : Maybe Geodata
   , angle : Animation
-  , shade : Animation
   , zoom : Animation
+  , load : Animation
   , startAngle : Maybe Float
   , cursor : Cursor
   , shift : Bool
@@ -46,12 +47,9 @@ init colorBackground =
   ( { size = (0, 0)
     , colorBackground = Color.fromRgba colorBackground
     , geodata = Nothing
-    , angle = Animation.init (Animation.parabolic 0.3) 1000 (3 * pi / 2)
-      |> Animation.to (3 * pi / 2 - degrees 38)
-    , shade = Animation.init (Animation.parabolic 0.3) 1000 1
-      |> Animation.to 0
-    , zoom = Animation.init (Animation.parabolic 0.3) 1000 0
-      |> Animation.to 1
+    , angle = Animation.init (Animation.Parabolic 0.5) 200 (3 * pi / 2 + initAngle)
+    , zoom = Animation.init (Animation.Parabolic 0.5) 500 1
+    , load = Animation.init (Animation.Parabolic 0.2) 2000 1 |> Animation.to 0
     , startAngle = Nothing
     , cursor = Grab
     , shift = False
@@ -59,6 +57,10 @@ init colorBackground =
     }
   , getElement
   )
+
+
+initAngle : Float
+initAngle = degrees -38
 
 
 type alias Point =
@@ -76,34 +78,12 @@ type Msg
   | Wheel Float
 
 
-type Cursor
-  = Grab
-  | Grabbing
-
-
-cursorStyle : Cursor -> String
-cursorStyle cursor =
-  String.concat
-    [ "cursor: "
-    , ( case cursor of
-        Grab -> "grab"
-        Grabbing -> "grabbing"
-      )
-    , ";"
-    ]
-
-
 subscriptions : Projection -> Sub Msg
 subscriptions _ =
   Sub.batch
     [ Browser.Events.onAnimationFrameDelta TimeDelta
     , Browser.Events.onResize Resize
     ]
-
-
-getAngle : Point -> Point -> Float
-getAngle ( x, y ) ( w, h ) =
-  atan2 (x - w / 2) (y - h / 2)
 
 
 update : Msg -> Projection -> (Projection, Cmd Msg)
@@ -132,8 +112,8 @@ update msg projection =
       ( { projection
         | geodata = Just geodata
         , angle = Animation.run projection.angle
-        , shade = Animation.run projection.shade
         , zoom = Animation.run projection.zoom
+        , load = Animation.run projection.load
         }
       , Cmd.none
       )
@@ -141,8 +121,8 @@ update msg projection =
     TimeDelta dt ->
       ( { projection
         | angle = Animation.step dt projection.angle
-        , shade = Animation.step dt projection.shade
         , zoom = Animation.step dt projection.zoom
+        , load = Animation.step dt projection.load
         }
       , Cmd.none
       )
@@ -176,7 +156,6 @@ update msg projection =
           { projection
           | angle =
             projection.angle
-              |> Animation.withDuration 200
               |> Animation.to (projection.angle.stop + normalize angleDelta)
           , startAngle = Just stopAngle
           }
@@ -199,18 +178,23 @@ update msg projection =
       ( { projection
         | zoom =
           projection.zoom
-            |> Animation.withDuration 500
             |> Animation.to
-              (max 0 (min 10 (projection.zoom.stop - 0.2 * dy / 53)))
+              (max 1 (min 10 (projection.zoom.stop - 0.2 * dy / 53)))
         }
       , Cmd.none
       )
+
 
 
 getElement : Cmd Msg
 getElement =
   Browser.Dom.getElement "projection"
     |> Task.attempt (Result.toMaybe >> Element)
+
+
+getAngle : Point -> Point -> Float
+getAngle ( x, y ) ( w, h ) =
+  atan2 (x - w / 2) (y - h / 2)
 
 
 preventDefault : Json.Decode.Decoder Msg -> VirtualDom.Handler Msg
@@ -268,7 +252,7 @@ view projection =
             sin <| min beta (pi / 2)
 
           z =
-            2 ^ projection.zoom.value
+            2 ^ (projection.zoom.value - projection.load.value)
 
           transformTheta theta =
             let
@@ -286,7 +270,7 @@ view projection =
               phi
 
           rotate ( phi, theta ) =
-            ( projection.angle.value + phi, theta )
+            ( projection.angle.value - projection.load.value * initAngle + phi, theta )
 
           spherical ( lng, lat ) =
             ( degrees lng, pi / 2 - degrees lat )
@@ -397,7 +381,7 @@ view projection =
             , InPx.height h
             , fill
               <| Paint
-              <| withAlpha projection.shade.value projection.colorBackground
+              <| withAlpha projection.load.value projection.colorBackground
             ]
             []
         in
@@ -435,3 +419,19 @@ withAlpha alpha color =
 colorTransparent : Color
 colorTransparent =
   Color.rgba 0 0 0 0
+
+
+type Cursor
+  = Grab
+  | Grabbing
+
+
+cursorStyle : Cursor -> String
+cursorStyle cursor =
+  String.concat
+    [ "cursor: "
+    , case cursor of
+        Grab -> "grab"
+        Grabbing -> "grabbing"
+    , ";"
+    ]

@@ -239,41 +239,50 @@ view projection =
     <| case projection.geodata of
       Just geodata ->
         let
-          ( w, h ) =
-            projection.size
+          -- turn geodata values into spherical coordinates (theta from north pole)
+          spherical ( lng, lat ) =
+            ( degrees lng, pi / 2 - degrees lat )
 
-          a =
-            min w h
+          -- rotate the map according to model position
+          rotate ( phi, theta ) =
+            ( projection.angle.value - projection.load.value * initAngle + phi, theta )
 
-          scale ( x, y ) =
-            ( w / 2 + x * a / 2, h / 2 - y * a / 2 )
-
-          r beta =
-            sin <| min beta (pi / 2)
-
+          -- calculate the scale value from model ones
           z =
             2 ^ (projection.zoom.value - projection.load.value)
 
+          -- calculate the distance from the point to the center of the screen
+          r beta =
+            sin <| min beta (pi / 2)
+
+          -- transform the angle according to zoom
           transformTheta theta =
             let
               beta =
-                theta / z
+                theta / 2
 
               beta0 =
-                pi / z
+                pi / 2
             in
             0.5 * z * r beta / r beta0
-
+          
+          -- turn polar coordinates into Decart ones
           transform ( phi, theta ) =
             fromPolar
               (transformTheta theta)
               phi
 
-          rotate ( phi, theta ) =
-            ( projection.angle.value - projection.load.value * initAngle + phi, theta )
+          -- get viewport metrics
+          ( w, h ) =
+            projection.size
 
-          spherical ( lng, lat ) =
-            ( degrees lng, pi / 2 - degrees lat )
+          -- get the side of the square fit into the viewport
+          a =
+            min w h
+
+          -- scale coordinates
+          scale ( x, y ) =
+            ( w / 2 + x * a / 2, h / 2 - y * a / 2 )
 
           project =
             spherical

@@ -2,18 +2,18 @@ module Math exposing (..)
 
 
 type alias Point =
-  (Float, Float)
+    ( Float, Float )
 
 
 type alias Line =
-  List Point
+    List Point
 
 
 type alias Ring =
-  List Point
+    List Point
 
 
 type alias Polygon =
-  { exterior : Ring
-  , interiors : List Ring
-  }
+    { exterior : Ring
+    , interiors : List Ring
+    }

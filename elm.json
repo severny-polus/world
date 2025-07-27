@@ -16,6 +16,7 @@
             "elm/virtual-dom": "1.0.2",
             "elm-community/maybe-extra": "5.3.0",
             "elm-community/typed-svg": "7.0.0",
+            "elm-explorations/linear-algebra": "1.0.3",
             "mdgriffith/elm-ui": "1.1.8"
         },
         "indirect": {

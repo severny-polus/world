@@ -2,6 +2,7 @@ module GeoJson exposing (..)
 
 import Json.Decode as Json
 import Math exposing (Line, Point, Polygon)
+import Math.Vector2 exposing (vec2)
 
 
 polygons : Json.Decoder (List Polygon)
@@ -54,7 +55,7 @@ toPoint : List Float -> Maybe Point
 toPoint floats =
     case floats of
         [ x, y ] ->
-            Just ( x, y )
+            Just <| vec2 x y
 
         _ ->
             Nothing

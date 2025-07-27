@@ -15,6 +15,9 @@ config =
         , { name = "ne_110m_land_no_antarctica"
           , decoder = Json.Decode.map LandWithoutAntarctica GeoJson.polygons
           }
+        , { name = "ne_110m_land"
+          , decoder = Json.Decode.map Land GeoJson.polygons
+          }
         , { name = "ne_110m_rivers_lake_centerlines"
           , decoder = Json.Decode.map Rivers GeoJson.lines
           }

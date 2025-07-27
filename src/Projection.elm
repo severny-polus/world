@@ -7,7 +7,7 @@ import Color exposing (Color)
 import Geodata exposing (Geodata)
 import Html exposing (Html)
 import Json.Decode
-import Math exposing (Line, Point, Polygon, Ring)
+import Math exposing (Line, Point, Polygon, Ring, isOuter, toTuple)
 import Task
 import Time
 import TypedSvg exposing (circle, polygon, polyline, rect, svg)
@@ -298,7 +298,8 @@ view projection =
                         ( w / 2 + x * a / 2, h / 2 - y * a / 2 )
 
                     project =
-                        spherical
+                        toTuple
+                            >> spherical
                             >> rotate
                             >> transform
                             >> scale
@@ -335,29 +336,33 @@ view projection =
                             ]
                             []
 
-                    landWater : Polygon -> List (Svg Msg)
-                    landWater pol =
+                    drawContinent : Polygon -> List (Svg Msg)
+                    drawContinent pol =
                         List.concat
                             [ [ land pol.exterior ]
-                            , List.map water pol.interiors
+                            , List.map water <| List.filter (not << isOuter) pol.interiors
                             ]
 
-                    waterWater : Polygon -> List (Svg Msg)
-                    waterWater pol =
+                    drawSouthContinent : Polygon -> List (Svg Msg)
+                    drawSouthContinent pol =
                         List.concat
                             [ [ water pol.exterior ]
-                            , List.map water pol.interiors
+                            , List.map water <| List.filter (not << isOuter) pol.interiors
                             ]
 
-                    waterLand : Polygon -> List (Svg Msg)
-                    waterLand pol =
+                    drawLake : Polygon -> List (Svg Msg)
+                    drawLake pol =
                         List.concat
-                            [ [ water pol.exterior ]
-                            , List.map land pol.interiors
+                            [ if not <| isOuter pol.exterior then
+                                [ water pol.exterior ]
+
+                              else
+                                []
+                            , List.map land <| List.filter (not << isOuter) pol.interiors
                             ]
 
-                    river : Line -> Svg Msg
-                    river line =
+                    drawRiver : Line -> Svg Msg
+                    drawRiver line =
                         polyline
                             [ points <| List.map project line
                             , stroke <| Paint colorContour
@@ -365,8 +370,7 @@ view projection =
                             ]
                             []
 
-                    city : Point -> Svg Msg
-                    city point =
+                    drawCity point =
                         let
                             ( x, y ) =
                                 project point
@@ -380,8 +384,8 @@ view projection =
                             ]
                             []
 
-                    earthCircle : Maybe Color -> Maybe Color -> Svg Msg
-                    earthCircle strokeColor fillColor =
+                    drawEarthCircle : Maybe Color -> Maybe Color -> Svg Msg
+                    drawEarthCircle strokeColor fillColor =
                         circle
                             [ InPx.cx <| w / 2
                             , InPx.cy <| h / 2
@@ -407,17 +411,52 @@ view projection =
                                     withAlpha projection.load.value projection.colorBackground
                             ]
                             []
+
+                    findSouthLand : List Polygon -> ( Maybe Polygon, List Polygon )
+                    findSouthLand polygons =
+                        let
+                            f p ( msp, lp ) =
+                                case msp of
+                                    Just _ ->
+                                        ( msp, p :: lp )
+
+                                    Nothing ->
+                                        if isOuter p.exterior then
+                                            ( Just p, lp )
+
+                                        else
+                                            ( Nothing, p :: lp )
+                        in
+                        List.foldl f ( Nothing, [] ) polygons
+
+                    drawEarth : List Polygon -> List (Svg Msg)
+                    drawEarth polygons =
+                        let
+                            ( maybeSouthLand, continents ) =
+                                findSouthLand polygons
+                        in
+                        List.concat <|
+                            case maybeSouthLand of
+                                Just southLand ->
+                                    [ [ drawEarthCircle Nothing (Just colorLand)
+                                      ]
+                                    , drawSouthContinent southLand
+                                    , List.concatMap drawContinent continents
+                                    ]
+
+                                Nothing ->
+                                    [ [ drawEarthCircle Nothing (Just colorWater)
+                                      ]
+                                    , List.concatMap drawContinent continents
+                                    ]
                 in
                 List.concat
-                    [ [ earthCircle Nothing (Just colorLand)
-                      ]
-                    , List.concatMap waterWater geodata.landAntarctica
-                    , List.concatMap landWater geodata.landWithoutAntarctica
-                    , List.map river geodata.rivers
-                    , List.concatMap waterLand geodata.lakes
-                    , List.map city geodata.cities
-                    , [ earthCircle (Just colorContour) Nothing
-                      , shade
+                    [ drawEarth geodata.land -- континенты
+                    , List.map drawRiver geodata.rivers -- реки
+                    , List.concatMap drawLake geodata.lakes -- озёра
+                    , List.map drawCity geodata.cities -- населённые пункты
+                    , [ drawEarthCircle (Just colorContour) Nothing -- контур вокруг карты
+                      , shade -- переход при открытии
                       ]
                     ]
 
